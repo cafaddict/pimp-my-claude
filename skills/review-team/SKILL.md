@@ -37,6 +37,11 @@ Instructions:
 - Lead synthesizes all findings into a final report
 ```
 
+### Vault 기록
+리뷰 종합 후, 반복적으로 발견되는 패턴(보안 취약점 패턴, 성능 안티패턴 등)이 있으면
+오케스트레이터가 /note 스킬로 vault `lessons/`에 기록하라.
+리뷰어 agent가 직접 vault에 쓰지 않는다 — 결과를 종합한 뒤 오케스트레이터가 기록.
+
 ### 주의
 - 리뷰어에게 Write/Edit 권한을 주지 않는다
 - 단순 리뷰는 `/review` 스킬이 더 효율적 (팀은 중요 PR용)

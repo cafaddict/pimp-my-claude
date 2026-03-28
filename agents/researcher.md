@@ -42,6 +42,18 @@ When invoked:
 - [링크 목록]
 ```
 
+## Vault 기록용 요약
+리서치 완료 후, 아래 형식의 요약도 함께 반환하라 (호출자가 vault에 기록):
+```
+vault-summary:
+  type: area 또는 resource
+  topic: <영역명 — 지속적 주제면 area, 일회성이면 resource>
+  title: <한 줄 제목>
+  content: <핵심 발견 3-5줄, 출처 포함>
+```
+호출하는 skill/사용자가 이 요약을 /note로 vault에 기록한다.
+직접 vault에 파일을 쓰지 마라.
+
 ## Rules
 - Do NOT write or edit project files
 - Mark uncertain information explicitly

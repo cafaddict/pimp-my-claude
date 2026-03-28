@@ -52,6 +52,7 @@ $ARGUMENTS를 분석하여 독립적인 조사 관점으로 분해하라.
 종합 결과를 vault에 저장 (note 스킬 사용):
 - 기술 선택 → `decisions/`
 - 일반 리서치 → `resources/`
+- 지속적으로 축적할 리서치 영역이면 `areas/<topic>/`에 기록
 
 #### 5. 출력
 

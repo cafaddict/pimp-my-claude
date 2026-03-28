@@ -77,6 +77,8 @@
 - `/debug-team` — 경쟁적 가설 디버깅 (Agent Teams, 서로 반증)
 - `/feature-team [피처들]` — 병렬 피처 개발 (Subagent + worktree 격리)
 - `/tdd [기능들]` — TDD 사이클 (기능 간 병렬, 기능 내 순차)
+- `/sdd [요구사항]` — Spec-Driven Development (스펙→구현↔검증 피드백 루프)
+- `/harness [설명]` — Harness 컴포넌트 개발 (스펙→구현↔테스트→배포)
 - `/daily` — 하루 마무리 정리 (오늘 세션 종합 → daily note)
 - `/guide` — 설치된 기능 전체 가이드
 

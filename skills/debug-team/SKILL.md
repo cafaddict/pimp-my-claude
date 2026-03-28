@@ -42,6 +42,11 @@ Instructions:
 Lead: synthesize the surviving hypothesis with strongest evidence.
 ```
 
+### Vault 기록
+근본 원인 합의 도출 후, 오케스트레이터가 /note 스킬로 vault `lessons/`에 기록하라.
+기록 대상: surviving hypothesis, 검증 방법, 교훈.
+조사관 agent가 직접 vault에 쓰지 않는다 — 오케스트레이터가 종합 후 기록.
+
 ### 주의
 - 조사관에게 Write/Edit 권한을 주지 않는다 (원인 확인 전 수정 금지)
 - 단순 버그는 `/debugit` 스킬이 더 효율적 (팀은 원인 불명 시)
