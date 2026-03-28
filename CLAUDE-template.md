@@ -55,6 +55,7 @@
 - 테스트/컴파일로 변경 검증 후 완료 선언
 - 자동 커밋 금지. 최소 변경 원칙.
 - 실수 발생 시 이 파일에 즉시 교훈 추가 (living document)
+- hook/skill 수정 시 pimp-my-claude 레포의 README.md도 함께 업데이트
 
 ## Vault (Second Brain)
 작업 중 중요한 결정, 발견, 교훈이 있으면 **자동으로 vault에 기록하라** (note 스킬 사용).

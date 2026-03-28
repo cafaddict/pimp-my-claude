@@ -1,6 +1,7 @@
 # pimp-my-claude
 
 Claude Code 환경을 한 번에 구성하는 도구 모음.
+Hooks, Skills, Vault(Second Brain), MCP 시맨틱 검색, Agent SDK 도구를 포함.
 
 ## 빠른 시작
 
@@ -23,70 +24,83 @@ cd pimp-my-claude
 
 ## 포함된 기능
 
-### Skills (7개)
+### Skills (9개)
 
-| 스킬 | 설명 |
-|------|------|
-| `/debugit` | 체계적 디버깅 (가설 → 검증 → 수정 → 테스트) |
-| `/review [PR]` | 코드 리뷰 (정확성/보안/성능/테스트) |
-| `/perf` | 성능 분석 (프로파일링 → 병목 → 최적화) |
-| `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 |
-| `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) |
-| `/recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) |
-| `/guide` | 설치된 기능 전체 가이드 |
+| 스킬 | 설명 | 자동 호출 |
+|------|------|----------|
+| `/debugit` | 체계적 디버깅 (가설 → 검증 → 수정 → 테스트) | 가능 |
+| `/review [PR]` | 코드 리뷰 (정확성/보안/성능/테스트 4관점) | 가능 |
+| `/perf` | 성능 분석 (프로파일링 → 병목 → 최적화 → 벤치마크) | 가능 |
+| `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 | 사용자만 |
+| `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
+| `/recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
+| `/note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
+| `/daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
+| `/guide` | 설치된 기능 전체 가이드 | 사용자만 |
 
 ### Hooks (5개)
 
 | 훅 | 이벤트 | 설명 |
 |----|--------|------|
 | block-dangerous | PreToolUse (Bash) | rm -rf, git push --force 등 차단 |
-| protect-sensitive | PreToolUse (Write/Edit) | .env, credentials 등 수정 차단 |
+| protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
 | auto-format | PostToolUse (Write/Edit) | black, clang-format, prettier 자동 적용 |
-| session-save | Stop | 세션 종료 시 vault에 세션 기록 자동 저장 |
+| session-save | Stop | 세션 종료 시 vault에 세션 기록 + git commit/push |
 | notify-done | Stop | 작업 완료 알림 (macOS/Linux/Windows) |
 
-### Vault (--with-vault)
+### Vault — Second Brain (--with-vault)
 
 ```
 vault/
-├── CLAUDE.md        vault 운영 매뉴얼
-├── sessions/        세션 기록 (자동 생성)
-├── projects/        프로젝트별 지식
-├── decisions/       ADR (아키텍처 의사결정)
-├── areas/           지속 관리 영역
-├── resources/       참고 자료
-├── daily-notes/     일일 노트
+├── CLAUDE.md        vault 운영 매뉴얼 (Claude 자동 참조)
+├── sessions/        세션 기록 (자동 — session-save hook)
+├── lessons/         교훈/삽질 기록 (자동 — /note 스킬)
+├── decisions/       ADR 아키텍처 의사결정 (자동 — /note 스킬)
+├── projects/        프로젝트별 지식 (자동 — /note, init-project.sh)
+├── resources/       참고 자료, 패턴 (자동 — /note 스킬)
+├── areas/           지속 관리 영역 (수동)
+├── daily-notes/     일일 정리 (/daily 스킬)
 └── templates/       노트 템플릿 4종
 ```
 
-### MCP (--with-mcp)
+vault 변경 시 자동 git commit + push (best-effort).
+
+### MCP 시맨틱 검색 (--with-mcp)
 
 markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 - FastEmbed (ONNX, CPU-only) — API 키/GPU 불필요
-- 하이브리드 검색 (키워드 + 시맨틱)
-- headless Linux 서버에서도 동작
+- 하이브리드 검색 (키워드 + 벡터 시맨틱)
+- headless Linux 서버에서도 동작 (Obsidian 불필요)
 
 ### Agent SDK 도구 (--with-sdk)
 
 | 명령어 | 설명 |
 |--------|------|
-| `claude-review` | PR 자동 리뷰 (Opus + 구조화 출력) |
-| `claude-scan` | 코드베이스 보안 스캔 (OWASP Top 10) |
+| `claude-review --pr 123` | PR 자동 리뷰 (Opus + Pydantic 구조화 출력) |
+| `claude-scan --dir ./src` | 코드베이스 보안 스캔 (OWASP Top 10) |
 | `claude-report` | 일일 코드 변경 요약 |
+
+모든 도구에 `--budget`(비용 한도), `--json`(구조화 출력) 옵션 지원.
 
 ### Rules 템플릿
 
 ```bash
-./init-project.sh cpp python    # 프로젝트에 .claude/rules/ 생성
+./init-project.sh cpp python    # .claude/rules/ + vault 프로젝트 폴더 생성
 ```
+
+| 템플릿 | 적용 대상 |
+|--------|----------|
+| cpp.md | *.cpp, *.hpp, *.h, *.cc |
+| python.md | *.py |
+| testing.md | *test*, *spec*, tests/** |
 
 ## 구조
 
 ```
 ├── setup.sh                  원클릭 설치
-├── init-project.sh           프로젝트별 rules/ 초기화
+├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
 ├── hooks/ (5개)              hook 스크립트
-├── skills/ (7개)             skill 정의
+├── skills/ (9개)             skill 정의
 ├── rules-templates/ (3개)    cpp, python, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿
 ├── agent-tools/              Agent SDK Python 프로젝트
@@ -100,3 +114,7 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 - `jq` (settings.json 병합, 선택)
 - Python 3.10+ (--with-mcp, --with-sdk 사용 시)
 - `gh` CLI (PR 리뷰용, 선택)
+
+## 기여
+
+hook이나 skill을 수정/추가한 경우, 이 README도 함께 업데이트하세요.
