@@ -54,8 +54,9 @@
 - 병렬 작업이 필요하면 git worktrees 사용 (`claude --worktree <name>`)
 - 테스트/컴파일로 변경 검증 후 완료 선언
 - 자동 커밋 금지. 최소 변경 원칙.
+- git commit 전에 변경 내용이 프로젝트 README에 반영되어야 하는지 확인하고, 필요하면 업데이트. 단순 버그 수정은 불필요, API/기능/설정 변경은 필요.
 - 실수 발생 시 이 파일에 즉시 교훈 추가 (living document)
-- hook/skill 수정 시 pimp-my-claude 레포의 README.md도 함께 업데이트
+- ~/.claude/ 의 hook/skill을 수정할 때는 ~/Documents/claude-code-config/ 레포에도 반영 + README.md 업데이트
 
 ## Vault (Second Brain)
 작업 중 중요한 결정, 발견, 교훈이 있으면 **자동으로 vault에 기록하라** (note 스킬 사용).
