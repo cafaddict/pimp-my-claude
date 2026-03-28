@@ -1,14 +1,14 @@
 # pimp-my-claude
 
 Claude Code 환경을 한 번에 구성하는 도구 모음.
-Hooks, Skills, Vault(Second Brain), MCP 시맨틱 검색, Agent SDK 도구를 포함.
+Hooks, Skills, Agents, Vault(Second Brain), MCP 시맨틱 검색, Agent SDK 도구를 포함.
 
 ## 빠른 시작
 
 ```bash
 git clone https://github.com/cafaddict/pimp-my-claude.git
 cd pimp-my-claude
-./setup.sh                # 기본 (hooks + skills + settings)
+./setup.sh                # 기본 (hooks + skills + agents + settings)
 ./setup.sh --all          # 전부 설치 (vault + MCP + SDK)
 ```
 
@@ -16,15 +16,20 @@ cd pimp-my-claude
 
 | 옵션 | 설명 | 필요 조건 |
 |------|------|----------|
-| (기본) | hooks, skills, settings, CLAUDE.md | Claude Code |
-| `--with-vault` | Obsidian vault 구조 생성 | - |
+| (기본) | hooks, skills, agents, settings, CLAUDE.md | Claude Code |
+| `--with-vault` | Obsidian vault 구조 생성 + `CLAUDE_VAULT_DIR` 환경변수 등록 | - |
 | `--with-mcp` | markdown-vault-mcp + 시맨틱 검색 | Python 3.10+ |
 | `--with-sdk` | Agent SDK 도구 (claude-review 등) | Python 3.10+ |
 | `--all` | 위 3개 전부 | Python 3.10+ |
 
+```bash
+# vault 경로 커스텀 (기본: ~/Documents/vault)
+CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
+```
+
 ## 포함된 기능
 
-### Skills (14개)
+### Skills (15개)
 
 #### 단일 세션 스킬
 | 스킬 | 설명 | 자동 호출 |
@@ -36,6 +41,7 @@ cd pimp-my-claude
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
 | `/note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
 | `/recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
+| `/save-session` | 현재 세션 요약을 vault에 저장 | ✅ 세션 마무리 시 자동 |
 | `/daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
 | `/guide` | 설치된 기능 전체 가이드 | 사용자만 |
 
@@ -58,14 +64,13 @@ cd pimp-my-claude
 | `architect` | 아키텍처/설계 분석 (읽기전용, 메모리 축적) | inherit | - |
 | `researcher` | 리서치 전문가 (웹 검색, 문서, 코드베이스) | inherit | - |
 
-### Hooks (5개)
+### Hooks (4개)
 
 | 훅 | 이벤트 | 설명 |
 |----|--------|------|
 | block-dangerous | PreToolUse (Bash) | rm -rf, git push --force 등 차단 |
 | protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
 | auto-format | PostToolUse (Write/Edit) | black, clang-format, prettier 자동 적용 |
-| session-save | Stop | 세션 종료 시 vault에 세션 기록 + git commit/push |
 | notify-done | Stop | 작업 완료 알림 (macOS/Linux/Windows) |
 
 ### Vault — Second Brain (--with-vault)
@@ -73,17 +78,18 @@ cd pimp-my-claude
 ```
 vault/
 ├── CLAUDE.md        vault 운영 매뉴얼 (Claude 자동 참조)
-├── sessions/        세션 기록 (자동 — session-save hook)
-├── lessons/         교훈/삽질 기록 (자동 — /note 스킬)
-├── decisions/       ADR 아키텍처 의사결정 (자동 — /note 스킬)
-├── projects/        프로젝트별 지식 (자동 — /note, init-project.sh)
-├── resources/       참고 자료, 패턴 (자동 — /note 스킬)
+├── sessions/        세션 기록 (/save-session 스킬)
+├── lessons/         교훈/삽질 기록 (/note 스킬 자동)
+├── decisions/       ADR 아키텍처 의사결정 (/note 스킬 자동)
+├── projects/        프로젝트별 지식 (/note, init-project.sh)
+├── resources/       참고 자료, 패턴 (/note 스킬 자동)
 ├── areas/           지속 관리 영역 (수동)
 ├── daily-notes/     일일 정리 (/daily 스킬)
 └── templates/       노트 템플릿 4종
 ```
 
-vault 변경 시 자동 git commit + push (best-effort).
+vault 경로: `$CLAUDE_VAULT_DIR` (기본: `~/Documents/vault`).
+`--with-vault` 설치 시 쉘 rc에 자동 등록.
 
 ### MCP 시맨틱 검색 (--with-mcp)
 
@@ -119,8 +125,8 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 ```
 ├── setup.sh                  원클릭 설치
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
-├── hooks/ (5개)              hook 스크립트
-├── skills/ (14개)            skill 정의
+├── hooks/ (4개)              hook 스크립트
+├── skills/ (15개)            skill 정의
 ├── agents/ (5개)             custom agent 정의
 ├── rules-templates/ (3개)    cpp, python, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿
