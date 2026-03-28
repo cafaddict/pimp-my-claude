@@ -9,12 +9,7 @@ effort: medium
 
 ## 세션 저장
 
-### vault 경로 결정
-
-vault 경로를 아래 순서로 결정:
-1. 환경변수 `$CLAUDE_VAULT_DIR`이 설정되어 있으면 사용
-2. 없으면 `~/Documents/vault/`를 기본값으로 사용
-3. 해당 경로가 존재하지 않으면 사용자에게 경로를 물어라
+VAULT_DIR: 환경변수 `$CLAUDE_VAULT_DIR` 또는 `~/Documents/vault/` (경로 없으면 사용자에게 질문).
 
 ### 저장 프로세스
 
@@ -60,11 +55,11 @@ cwd: <현재 작업 디렉토리>
    - 이미 동일/유사한 decision이 vault에 있으면 skip (중복 방지)
    - 사소한 결정 (파일명 변경 등)은 기록하지 마라 — 재사용 가치 있는 것만
 
-5. git sync:
+5. git stage (commit은 하지 않음 — /daily 또는 다음 vault 쓰기가 통합 commit):
 ```bash
-cd <vault> && git add sessions/ decisions/ && git commit -m "session: YYYY-MM-DD HHMM" --quiet && git push --quiet
+cd <vault> && git add sessions/ decisions/
 ```
-실패해도 무시.
+단독 실행 시 (daily 없이 세션 저장만): `git commit -m "session: YYYY-MM-DD HHMM" --quiet && git push --quiet &`
 
 ### 주의
 - 간결하게 작성. 대화 전체를 복사하지 마라.
