@@ -69,6 +69,7 @@
 - `/prompt` — 프롬프트를 Task/Context/Req/Output 구조로 변환
 - `/taskloop [태스크명]` — Boris 스타일 태스크 루프 (.claude/tasks/ 기반)
 - `/recall [키워드]` — 이전 세션 컨텍스트 복원 (vault 시맨틱 검색)
+- `/daily` — 하루 마무리 정리 (오늘 세션 종합 → daily note)
 - `/guide` — 설치된 기능 전체 가이드
 
 ## Tips
