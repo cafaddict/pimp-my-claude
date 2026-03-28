@@ -51,4 +51,12 @@ cwd: ${CWD}
 
 EOF
 
+# git commit + push (best-effort, 실패해도 무시)
+if [ -d "$VAULT_DIR/.git" ]; then
+  cd "$VAULT_DIR"
+  git add sessions/ 2>/dev/null
+  git commit -m "session: ${DATE} ${TIME}" --quiet 2>/dev/null || true
+  git push --quiet 2>/dev/null &
+fi
+
 exit 0
