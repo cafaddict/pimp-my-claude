@@ -56,6 +56,10 @@
 - 자동 커밋 금지. 최소 변경 원칙.
 - 실수 발생 시 이 파일에 즉시 교훈 추가 (living document)
 
+## Vault (Second Brain)
+작업 중 중요한 결정, 발견, 교훈이 있으면 **자동으로 vault에 기록하라** (note 스킬 사용).
+사용자가 요청하지 않아도 프로액티브하게 기록. vault 경로: ~/Documents/vault/
+
 ## Custom Skills
 - `/debugit` — 체계적 디버깅 (가설 수립 → 검증 → 수정 → 테스트)
 - `/review [PR번호]` — 코드 리뷰 (정확성/보안/성능/테스트 4관점)
