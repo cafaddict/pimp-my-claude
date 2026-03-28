@@ -24,7 +24,7 @@ cd pimp-my-claude
 
 ## 포함된 기능
 
-### Skills (13개)
+### Skills (14개)
 
 #### 단일 세션 스킬
 | 스킬 | 설명 | 자동 호출 |
@@ -42,12 +42,13 @@ cd pimp-my-claude
 #### 팀/멀티에이전트 스킬
 | 스킬 | 방식 | 설명 |
 |------|------|------|
+| `/research-team [주제]` | Subagent 병렬 | 다관점 리서치 → 종합 → vault 저장 |
 | `/review-team` | Agent Teams | 경쟁적 3관점 리뷰 (보안/성능/정확성, 서로 반박) |
 | `/debug-team` | Agent Teams | 경쟁적 가설 디버깅 (3명이 서로 반증) |
 | `/feature-team [피처들]` | Subagent + worktree | 병렬 피처 개발 (피처당 1 에이전트, 격리) |
 | `/tdd [기능들]` | Subagent | TDD 사이클 (기능 간 병렬, 기능 내 RED→GREEN 순차) |
 
-### Agents (4개)
+### Agents (5개)
 
 | 에이전트 | 역할 | 모델 | 격리 |
 |----------|------|------|------|
@@ -55,6 +56,7 @@ cd pimp-my-claude
 | `test-writer` | 테스트 생성 전문가 (C++/Python) | inherit | - |
 | `implementer` | 코드 구현 (worktree 격리) | inherit | worktree |
 | `architect` | 아키텍처/설계 분석 (읽기전용, 메모리 축적) | inherit | - |
+| `researcher` | 리서치 전문가 (웹 검색, 문서, 코드베이스) | inherit | - |
 
 ### Hooks (5개)
 
@@ -118,8 +120,8 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 ├── setup.sh                  원클릭 설치
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
 ├── hooks/ (5개)              hook 스크립트
-├── skills/ (13개)            skill 정의
-├── agents/ (4개)             custom agent 정의
+├── skills/ (14개)            skill 정의
+├── agents/ (5개)             custom agent 정의
 ├── rules-templates/ (3개)    cpp, python, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿
 ├── agent-tools/              Agent SDK Python 프로젝트
