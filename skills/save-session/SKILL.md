@@ -54,9 +54,15 @@ cwd: <현재 작업 디렉토리>
 
 **wikilink 규칙**: Obsidian 그래프 뷰를 위해 `## 관련` 섹션에 반드시 관련 노트 wikilink를 포함하라. 파일명만으로 링크 (shortest name). 링크 대상이 존재하지 않으면 링크하지 마라.
 
-4. git sync:
+4. **결정사항 → decisions/ 자동 분리**:
+   세션의 `## 결정사항`에 기록된 항목 중 아키텍처/기술 선택에 해당하는 것이 있으면,
+   /note 스킬로 vault `decisions/`에 ADR 형식으로 자동 기록하라.
+   - 이미 동일/유사한 decision이 vault에 있으면 skip (중복 방지)
+   - 사소한 결정 (파일명 변경 등)은 기록하지 마라 — 재사용 가치 있는 것만
+
+5. git sync:
 ```bash
-cd <vault> && git add sessions/ && git commit -m "session: YYYY-MM-DD HHMM" --quiet && git push --quiet
+cd <vault> && git add sessions/ decisions/ && git commit -m "session: YYYY-MM-DD HHMM" --quiet && git push --quiet
 ```
 실패해도 무시.
 

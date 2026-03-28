@@ -61,8 +61,9 @@
 ## Vault (Second Brain)
 작업 중 중요한 결정, 발견, 교훈이 있으면 **자동으로 vault에 기록하라** (note 스킬 사용).
 사용자가 요청하지 않아도 프로액티브하게 기록. vault 경로: ~/Documents/vault/
+- **결정을 내렸으면 반드시 /note로 decisions/에 기록하라** — 기술 선택, 아키텍처 결정, 설계 방향 등
 - 실수/삽질에서 배운 것 → vault의 lessons/에 기록 (note 스킬)
-- 새 세션 시작 시 vault의 lessons/를 참고하여 같은 실수 반복 방지
+- 새 세션 시작 시 vault의 lessons/와 decisions/를 참고하여 같은 실수/재논의 방지
 
 ## Custom Skills
 - `/debugit` — 체계적 디버깅 (가설 수립 → 검증 → 수정 → 테스트)
