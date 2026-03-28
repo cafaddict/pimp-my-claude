@@ -1,0 +1,15 @@
+# Obsidian
+.obsidian/
+.trash/
+
+# Smart Connections
+.smart-env/
+
+# MCP index/cache
+.cache/
+*.db
+*.npy
+
+# OS
+.DS_Store
+Thumbs.db

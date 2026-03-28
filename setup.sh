@@ -1,21 +1,33 @@
 #!/bin/bash
 # Claude Code 환경 부트스트랩
-# 사용법: git clone <repo> && cd claude-code-config && ./setup.sh [--with-sdk]
+# 사용법: git clone <repo> && cd claude-code-config && ./setup.sh [옵션]
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 INSTALL_SDK=false
+INSTALL_VAULT=false
+INSTALL_MCP=false
+VAULT_DIR="${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}"
 
 for arg in "$@"; do
   case "$arg" in
-    --with-sdk) INSTALL_SDK=true ;;
+    --with-sdk)   INSTALL_SDK=true ;;
+    --with-vault) INSTALL_VAULT=true ;;
+    --with-mcp)   INSTALL_MCP=true ;;
+    --all)        INSTALL_SDK=true; INSTALL_VAULT=true; INSTALL_MCP=true ;;
     --help|-h)
       echo "사용법: ./setup.sh [옵션]"
       echo ""
       echo "옵션:"
-      echo "  --with-sdk    Agent SDK 도구도 함께 설치 (Python 3.10+ 필요)"
+      echo "  --with-sdk    Agent SDK 도구 설치 (Python 3.10+ 필요)"
+      echo "  --with-vault  Obsidian vault 구조 생성"
+      echo "  --with-mcp    markdown-vault-mcp 설치 + Claude Code MCP 등록"
+      echo "  --all         위 3개 전부 설치"
       echo "  --help        이 도움말 표시"
+      echo ""
+      echo "환경변수:"
+      echo "  CLAUDE_VAULT_DIR  vault 경로 (기본: ~/Documents/vault)"
       exit 0
       ;;
   esac
@@ -64,7 +76,53 @@ else
   echo "✓ CLAUDE.md 생성"
 fi
 
-# 6. Agent SDK 도구 (옵션)
+# 6. Vault 구조 생성 (옵션)
+if [ "$INSTALL_VAULT" = true ]; then
+  echo ""
+  echo "--- Vault 구조 생성 ---"
+  if [ -d "$VAULT_DIR" ] && [ "$(ls -A "$VAULT_DIR" 2>/dev/null)" ]; then
+    echo "⚠ $VAULT_DIR 이미 존재하고 비어있지 않음 — 건너뜀"
+  else
+    mkdir -p "$VAULT_DIR"
+    cp -r "$SCRIPT_DIR/vault-template/"* "$VAULT_DIR/"
+    cp "$SCRIPT_DIR/vault-template/.gitignore" "$VAULT_DIR/"
+    cd "$VAULT_DIR" && git init && git add -A && git commit -m "Initial vault structure" --quiet
+    echo "✓ Vault 생성: $VAULT_DIR"
+  fi
+fi
+
+# 7. MCP 연동 (옵션)
+if [ "$INSTALL_MCP" = true ]; then
+  echo ""
+  echo "--- MCP 연동 (markdown-vault-mcp) ---"
+
+  if ! command -v python3 &>/dev/null; then
+    echo "✗ python3 미설치. MCP 설치를 건너뜁니다."
+  else
+    # vault venv에 설치
+    MCP_VENV="$VAULT_DIR/.venv"
+    if [ ! -d "$MCP_VENV" ]; then
+      python3 -m venv "$MCP_VENV"
+    fi
+    "$MCP_VENV/bin/pip" install "markdown-vault-mcp[all]" --quiet
+    echo "✓ markdown-vault-mcp 설치 완료"
+
+    # Claude Code MCP 등록
+    if command -v claude &>/dev/null; then
+      claude mcp remove vault 2>/dev/null || true
+      claude mcp add vault \
+        -e "MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR" \
+        -e "EMBEDDING_PROVIDER=fastembed" \
+        -- "$MCP_VENV/bin/markdown-vault-mcp" serve
+      echo "✓ Claude Code MCP 등록 완료"
+    else
+      echo "⚠ claude CLI 미설치 — MCP 수동 등록 필요:"
+      echo "  claude mcp add vault -e MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR -e EMBEDDING_PROVIDER=fastembed -- $MCP_VENV/bin/markdown-vault-mcp serve"
+    fi
+  fi
+fi
+
+# 8. Agent SDK 도구 (옵션)
 if [ "$INSTALL_SDK" = true ]; then
   echo ""
   echo "--- Agent SDK 도구 설치 ---"
@@ -72,9 +130,6 @@ if [ "$INSTALL_SDK" = true ]; then
   if ! command -v python3 &>/dev/null; then
     echo "✗ python3 미설치. Agent SDK 설치를 건너뜁니다."
   else
-    PYTHON_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-    echo "  Python $PYTHON_VER 감지"
-
     SDK_DIR="$SCRIPT_DIR/agent-tools"
     if [ ! -d "$SDK_DIR" ]; then
       echo "✗ agent-tools/ 디렉토리가 없습니다."
@@ -98,6 +153,9 @@ echo "사용법:"
 echo "  새 Claude Code 세션 시작 → 자동 적용"
 echo "  /guide                  → 설치된 기능 확인"
 echo "  ./init-project.sh       → 프로젝트별 rules/ 초기화"
+if [ "$INSTALL_VAULT" = true ]; then
+  echo "  /recall [키워드]        → 이전 세션 컨텍스트 복원"
+fi
 if [ "$INSTALL_SDK" = true ]; then
   echo "  source agent-tools/.venv/bin/activate → SDK 도구 활성화"
 fi
