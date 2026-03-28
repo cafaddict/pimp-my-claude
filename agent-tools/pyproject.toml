@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claude-tools"
+version = "0.1.0"
+description = "Claude Agent SDK 기반 개발 자동화 도구"
+requires-python = ">=3.10"
+dependencies = [
+    "claude-agent-sdk>=0.1.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[project.scripts]
+claude-review = "claude_tools.pr_reviewer:main"
+claude-scan = "claude_tools.codebase_scanner:main"
+claude-report = "claude_tools.daily_report:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/claude_tools"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

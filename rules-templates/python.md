@@ -1,0 +1,11 @@
+---
+globs: ["*.py"]
+---
+- Python 3.10+ target
+- Type hints required for all function signatures
+- f-strings only — no .format() or %
+- pathlib.Path over os.path
+- dataclasses or pydantic for structured data — no raw dicts for known schemas
+- pytest for testing, not unittest
+- logging over print for anything beyond quick debugging
+- black/ruff auto-applied on save (PostToolUse hook)
