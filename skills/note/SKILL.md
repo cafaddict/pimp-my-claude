@@ -131,6 +131,8 @@ tags: [area, <영역태그>]
 **projects/<name>/**:
 프로젝트 폴더가 없으면 생성하고 CLAUDE.md 포함.
 
+**프로젝트 노트와 지식 연결**: area나 resource 노트를 생성할 때, 관련 프로젝트가 있으면 해당 프로젝트 노트(`projects/<name>.md`)의 `## 지식` 섹션에 wikilink를 추가하라. 역으로, 프로젝트 노트 생성/업데이트 시 관련 area/resource가 있으면 `## 지식`에 연결.
+
 ### git sync
 
 노트 작성 후 반드시 실행:
