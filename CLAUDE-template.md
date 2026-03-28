@@ -71,6 +71,7 @@
 - `/prompt` — 프롬프트를 Task/Context/Req/Output 구조로 변환
 - `/taskloop [태스크명]` — Boris 스타일 태스크 루프 (.claude/tasks/ 기반)
 - `/recall [키워드]` — 이전 세션 컨텍스트 복원 (vault 시맨틱 검색)
+- `/save-session` — 현재 세션 요약을 vault에 저장. 세션 마무리 시 자동 사용.
 - `/research-team [주제]` — 병렬 리서치 (다관점 조사 → 종합 → vault 저장)
 - `/review-team` — 경쟁적 3관점 코드 리뷰 (Agent Teams, 서로 반박)
 - `/debug-team` — 경쟁적 가설 디버깅 (Agent Teams, 서로 반증)

@@ -89,6 +89,17 @@ if [ "$INSTALL_VAULT" = true ]; then
     cd "$VAULT_DIR" && git init && git add -A && git commit -m "Initial vault structure" --quiet
     echo "✓ Vault 생성: $VAULT_DIR"
   fi
+
+  # CLAUDE_VAULT_DIR을 쉘 rc에 등록 (기본값과 다를 때만)
+  if [ "$VAULT_DIR" != "$HOME/Documents/vault" ] || ! grep -q "CLAUDE_VAULT_DIR" "${SHELL_RC:-$HOME/.zshrc}" 2>/dev/null; then
+    SHELL_RC="$HOME/.$(basename "${SHELL:-zsh}")rc"
+    if ! grep -q "CLAUDE_VAULT_DIR" "$SHELL_RC" 2>/dev/null; then
+      echo "" >> "$SHELL_RC"
+      echo "# Claude Code vault path" >> "$SHELL_RC"
+      echo "export CLAUDE_VAULT_DIR=\"$VAULT_DIR\"" >> "$SHELL_RC"
+      echo "✓ CLAUDE_VAULT_DIR=$VAULT_DIR → $SHELL_RC 에 추가"
+    fi
+  fi
 fi
 
 # 7. MCP 연동 (옵션)
