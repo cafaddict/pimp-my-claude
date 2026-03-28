@@ -8,7 +8,7 @@ status: proposed
 # ADR: {{title}}
 
 ## 상태
-Proposed | Accepted | Deprecated | Superseded by [[]]
+Proposed | Accepted | Deprecated | Superseded by %% NNNN-후속결정 wikilink 추가 %%
 
 ## 맥락
 어떤 문제를 해결하려 하는가?

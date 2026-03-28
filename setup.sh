@@ -110,8 +110,9 @@ if [ "$INSTALL_MCP" = true ]; then
   if ! command -v python3 &>/dev/null; then
     echo "✗ python3 미설치. MCP 설치를 건너뜁니다."
   else
-    # vault venv에 설치
-    MCP_VENV="$VAULT_DIR/.venv"
+    # MCP venv — vault 밖에 설치 (Obsidian이 .venv 내 .md 파일을 인식하는 문제 방지)
+    MCP_VENV="$HOME/.local/share/markdown-vault-mcp/venv"
+    mkdir -p "$(dirname "$MCP_VENV")"
     if [ ! -d "$MCP_VENV" ]; then
       python3 -m venv "$MCP_VENV"
     fi

@@ -18,3 +18,6 @@ session_id:
 
 ## 변경 파일
 
+
+## 관련
+%% YYYY-MM-DD daily note, 프로젝트명 project note 형식으로 wikilink 추가 %%

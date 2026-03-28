@@ -14,10 +14,13 @@ repo:
 
 
 ## 핵심 결정
-- [[decisions/]]
+%% NNNN-결정제목 형식으로 wikilink 추가 %%
 
 ## 관련 세션
-- [[sessions/]]
+%% YYYY-MM-DD-HHMM 형식으로 wikilink 추가 %%
+
+## 교훈
+%% YYYY-MM-DD-교훈제목 형식으로 wikilink 추가 %%
 
 ## 메모
 
