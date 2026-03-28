@@ -24,8 +24,9 @@ cd pimp-my-claude
 
 ## 포함된 기능
 
-### Skills (9개)
+### Skills (13개)
 
+#### 단일 세션 스킬
 | 스킬 | 설명 | 자동 호출 |
 |------|------|----------|
 | `/debugit` | 체계적 디버깅 (가설 → 검증 → 수정 → 테스트) | 가능 |
@@ -33,10 +34,27 @@ cd pimp-my-claude
 | `/perf` | 성능 분석 (프로파일링 → 병목 → 최적화 → 벤치마크) | 가능 |
 | `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 | 사용자만 |
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
-| `/recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
+| `/recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
 | `/guide` | 설치된 기능 전체 가이드 | 사용자만 |
+
+#### 팀/멀티에이전트 스킬
+| 스킬 | 방식 | 설명 |
+|------|------|------|
+| `/review-team` | Agent Teams | 경쟁적 3관점 리뷰 (보안/성능/정확성, 서로 반박) |
+| `/debug-team` | Agent Teams | 경쟁적 가설 디버깅 (3명이 서로 반증) |
+| `/feature-team [피처들]` | Subagent + worktree | 병렬 피처 개발 (피처당 1 에이전트, 격리) |
+| `/tdd [기능들]` | Subagent | TDD 사이클 (기능 간 병렬, 기능 내 RED→GREEN 순차) |
+
+### Agents (4개)
+
+| 에이전트 | 역할 | 모델 | 격리 |
+|----------|------|------|------|
+| `code-reviewer` | 코드 리뷰 전문가 (읽기전용, 메모리 축적) | inherit | - |
+| `test-writer` | 테스트 생성 전문가 (C++/Python) | inherit | - |
+| `implementer` | 코드 구현 (worktree 격리) | inherit | worktree |
+| `architect` | 아키텍처/설계 분석 (읽기전용, 메모리 축적) | inherit | - |
 
 ### Hooks (5개)
 
@@ -100,7 +118,8 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 ├── setup.sh                  원클릭 설치
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
 ├── hooks/ (5개)              hook 스크립트
-├── skills/ (9개)             skill 정의
+├── skills/ (13개)            skill 정의
+├── agents/ (4개)             custom agent 정의
 ├── rules-templates/ (3개)    cpp, python, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿
 ├── agent-tools/              Agent SDK Python 프로젝트
