@@ -33,23 +33,17 @@ $ARGUMENTS를 파싱하여 컴포넌트 타입을 판별:
 
 ### Phase 2: SPEC
 
-`spec-writer` 에이전트를 호출 (harness 맥락 주입):
-
-```
-요구사항: $ARGUMENTS
-컴포넌트 타입: <Phase 1 결과>
-소스 레포: ~/Documents/claude-code-config/
-
-harness 컴포넌트 스펙을 작성하라.
-기존 컴포넌트의 패턴(frontmatter, 파일 구조)을 따르라.
-참고: hooks/ skills/ agents/ 디렉토리의 기존 파일들을 읽어 패턴을 파악하라.
-```
+`spec-writer` 에이전트 호출 (harness 맥락: $ARGUMENTS + 컴포넌트 타입 + 소스 레포 경로).
+기존 컴포넌트 패턴(frontmatter, 파일 구조)을 참고하여 작성.
 
 컴포넌트별 스펙 포함 사항:
-- **Hook**: 매칭 이벤트, 입력 JSON 형식, exit code 의미, 차단 조건
-- **Skill**: frontmatter 필드, 워크플로우 단계, 사용 에이전트, 허용 도구
-- **Agent**: frontmatter 필드, 역할 설명, 도구 접근, 출력 형식
-- **Setting**: 변경할 JSON 키, 영향받는 훅/플러그인
+
+| 타입 | 스펙 핵심 |
+|------|----------|
+| Hook | 매칭 이벤트, 입력 JSON, exit code 의미, 차단 조건 |
+| Skill | frontmatter, 워크플로우 단계, 사용 에이전트, 허용 도구 |
+| Agent | frontmatter, 역할, 도구 접근, 출력 형식 |
+| Setting | 변경 JSON 키, 영향 훅/플러그인 |
 
 ---
 
@@ -62,69 +56,26 @@ harness 컴포넌트 스펙을 작성하라.
 
 ### Phase 4: BUILD LOOP
 
-`/sdd`와 유사한 implement ↔ verify 루프 (harness-tester가 evaluator 역할).
+`/sdd`와 유사한 implement ↔ verify 루프. harness-tester가 evaluator 역할. max 3회. PASS → Phase 5, FAIL → 피드백 → 재실행.
 
-#### 4a: IMPLEMENT
+소스 레포(`~/Documents/claude-code-config/`)에 파일 작성. 컴포넌트별 규칙:
 
-소스 레포(`~/Documents/claude-code-config/`)에 파일을 작성.
-
-컴포넌트별 작성 규칙:
-- **Hook**: `hooks/<name>.sh`, `chmod +x`, shebang 포함, stdin JSON 처리, exit code 사용
-- **Skill**: `skills/<name>/SKILL.md`, YAML frontmatter + 마크다운 body
-- **Agent**: `agents/<name>.md`, YAML frontmatter + 역할/출력/규칙 섹션
-- **Setting**: `settings-template.json`에 병합 (`jq` 사용)
-
-#### 4b: TEST
-
-`harness-tester` 에이전트를 호출:
-
-```
-컴포넌트 타입: <타입>
-파일 경로: <작성된 파일>
-소스 레포: ~/Documents/claude-code-config/
-
-이 harness 컴포넌트를 검증하라.
-```
-
-#### 4c: DECISION
-
-- **PASS** → Phase 5
-- **FAIL** → 피드백으로 4a 재실행 (max 3회)
+| 타입 | 파일 | 규칙 |
+|------|------|------|
+| Hook | `hooks/<name>.sh` | chmod +x, shebang, stdin JSON, exit code |
+| Skill | `skills/<name>/SKILL.md` | YAML frontmatter + markdown |
+| Agent | `agents/<name>.md` | YAML frontmatter + 역할/출력/규칙 |
+| Setting | `settings-template.json` | jq 병합 |
 
 ---
 
-### Phase 5: DEPLOY
+### Phase 5: DEPLOY & SYNC
 
-소스 레포에서 ~/.claude/로 배포:
-
-```bash
-# Hook
-cp ~/Documents/claude-code-config/hooks/<name>.sh ~/.claude/hooks/
-chmod +x ~/.claude/hooks/<name>.sh
-
-# Skill
-mkdir -p ~/.claude/skills/<name>
-cp ~/Documents/claude-code-config/skills/<name>/SKILL.md ~/.claude/skills/<name>/
-
-# Agent
-cp ~/Documents/claude-code-config/agents/<name>.md ~/.claude/agents/
-
-# Setting — 병합 (덮어쓰기 아닌 머지)
-# 사용자에게 diff 보여주고 승인 후 적용
-```
-
-배포 후 source ↔ deployed 동기화 확인:
-```bash
-diff <source-file> <deployed-file>
-```
-
----
-
-### Phase 6: SYNC
-
-1. **README.md 업데이트**: 새 컴포넌트를 해당 섹션 테이블에 추가, 카운트 업데이트
-2. **CLAUDE-template.md 업데이트**: skill/agent 추가 시 Custom Skills 목록에 반영
-3. 사용자에게 git commit 제안
+1. **배포**: 소스 레포 → `~/.claude/` 대응 경로에 복사 (hook은 chmod +x, setting은 diff 확인 후 jq 병합)
+2. **동기화 확인**: `diff <source-file> <deployed-file>`
+3. **README.md 업데이트**: 새 컴포넌트를 해당 섹션에 추가, 카운트 업데이트
+4. **CLAUDE-template.md 업데이트**: skill/agent 추가 시 반영
+5. 사용자에게 git commit 제안
 
 ---
 

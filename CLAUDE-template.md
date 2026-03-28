@@ -5,32 +5,10 @@
 - Assume familiarity with advanced concepts: templates, metaprogramming, RAII, move semantics, smart pointers, Python decorators, generators, asyncio, type hints.
 - **However, always explain code so that a college sophomore could understand it.** Use plain language, break down complex logic step by step, and clarify *why* each design choice was made — even if the code itself is advanced.
 
-## C++
-- Prefer modern C++ (C++17/20/23) idioms and features
-- Use `std::` containers and algorithms over raw loops where clearer
-- Prefer `auto` for complex types, explicit types for clarity at interfaces
-- Use RAII and smart pointers (`std::unique_ptr`, `std::shared_ptr`) — no raw `new`/`delete`
-- Prefer `constexpr` and `const` wherever possible
-- Use `std::optional`, `std::variant`, `std::expected` over error codes or exceptions where appropriate
-- Follow the Rule of Five/Zero
-- Prefer `std::string_view` and `std::span` for non-owning references
-- Use namespaces to organize code; avoid `using namespace std`
-
-## Python
-- Target Python 3.10+ unless the project specifies otherwise
-- Use type hints for all function signatures
-- Prefer f-strings over `.format()` or `%`
-- Use `pathlib.Path` over `os.path`
-- Prefer list/dict comprehensions when readable; break into loops when complex
-- Use `dataclasses` or `pydantic` for structured data — avoid raw dicts for known schemas
-- Use `pytest` for testing, not `unittest`
-- Prefer `logging` over `print` for anything beyond quick debugging
+- C++/Python 코딩 스타일: 프로젝트 .claude/rules/ 또는 개인 스타일 가이드 참고
 
 ## Code Style (General)
-- Write clear, self-documenting code; use comments only when the "why" isn't obvious
-- Keep functions short and focused on a single responsibility
-- Prefer composition over inheritance
-- Naming: descriptive over terse (`calculate_total` not `calc`)
+- 자기 문서화 코드, 단일 책임 함수, 구성 > 상속, 서술적 이름
 
 ## Prompt Structure
 내가 비구조적 프롬프트를 주면, 내부적으로 이 구조를 적용하라:
@@ -65,23 +43,7 @@
 - 실수/삽질에서 배운 것 → vault의 lessons/에 기록 (note 스킬)
 - 새 세션 시작 시 vault의 lessons/와 decisions/를 참고하여 같은 실수/재논의 방지
 
-## Custom Skills
-- `/debugit` — 체계적 디버깅 (가설 수립 → 검증 → 수정 → 테스트)
-- `/review [PR번호]` — 코드 리뷰 (정확성/보안/성능/테스트 4관점)
-- `/perf` — 성능 분석 (프로파일링 → 병목 → 최적화 → 벤치마크)
-- `/prompt` — 프롬프트를 Task/Context/Req/Output 구조로 변환
-- `/taskloop [태스크명]` — Boris 스타일 태스크 루프 (.claude/tasks/ 기반)
-- `/recall [키워드]` — 이전 세션 컨텍스트 복원 (vault 시맨틱 검색)
-- `/save-session` — 현재 세션 요약을 vault에 저장. 세션 마무리 시 자동 사용.
-- `/research-team [주제]` — 병렬 리서치 (다관점 조사 → 종합 → vault 저장)
-- `/review-team` — 경쟁적 3관점 코드 리뷰 (Agent Teams, 서로 반박)
-- `/debug-team` — 경쟁적 가설 디버깅 (Agent Teams, 서로 반증)
-- `/feature-team [피처들]` — 병렬 피처 개발 (Subagent + worktree 격리)
-- `/tdd [기능들]` — TDD 사이클 (기능 간 병렬, 기능 내 순차)
-- `/sdd [요구사항]` — Spec-Driven Development (스펙→구현↔검증 피드백 루프)
-- `/harness [설명]` — Harness 컴포넌트 개발 (스펙→구현↔테스트→배포)
-- `/daily` — 하루 마무리 정리 (오늘 세션 종합 → daily note)
-- `/guide` — 설치된 기능 전체 가이드
+- Custom Skills: ~/.claude/skills/ 에 17개 설치됨. /guide로 확인.
 
 ## Tips
 - `&` 접두사: 원격 샌드박스에서 무거운 분석 오프로드
@@ -89,18 +51,6 @@
 - `/context`: 현재 컨텍스트 사용량 확인
 - `Ctrl+G`: 외부 에디터에서 긴 프롬프트 작성
 
-## Tools
-- Use `cmake` for C++ build systems
-- Use `pytest` with clear test names (`test_<thing>_<condition>_<expected>`)
-- Prefer `pip` + `venv` for Python environments unless the project uses something else
-
 ## Plugins
-The following Claude Code plugins are installed and enabled. Use them proactively where appropriate — don't wait to be asked.
-
-- **Context7 MCP** — Always use for library/API documentation, code examples, and setup/configuration steps. Prefer this over guessing or using stale knowledge.
-- **GitHub MCP** — Use for GitHub operations (issues, PRs, repo info) when `gh` CLI isn't sufficient or when richer context is needed.
-- **clangd LSP** — Use for C++ diagnostics, completions, and go-to-definition. Leverage this when working on C++ codebases for accurate type info and error checking.
-- **Code Review** (`/code-review`) — Use when asked to review a PR or when reviewing code changes.
-- **Code Simplifier** — Use when asked to simplify, clean up, or refactor code for clarity.
-- **Commit Commands** (`/commit`, `/commit-push-pr`, `/clean_gone`) — Use for git workflows. Never auto-commit unless explicitly asked.
-- 주의: MCP 서버는 사용 안 해도 컨텍스트 8~30% 소비. 안 쓰는 서버는 비활성화.
+Context7(라이브러리 문서), GitHub, clangd(C++), Code Review, Code Simplifier, Commit Commands 활성화.
+주의: MCP 서버는 사용 안 해도 컨텍스트 8~30% 소비. 안 쓰는 서버는 비활성화.
