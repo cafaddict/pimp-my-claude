@@ -1,27 +1,15 @@
 ---
 name: guide
 description: "설치된 기능 전체 가이드. 사용 가능한 스킬, 훅, 에이전트, 플러그인을 보여줌."
-disable-model-invocation: true
 ---
-
-## 현재 환경 상태
-
-### 설치된 Skills
-!`ls ~/.claude/skills/ 2>/dev/null`
-
-### 설치된 Hooks
-!`ls ~/.claude/hooks/ 2>/dev/null`
-
-### 설치된 Agents
-!`ls ~/.claude/agents/ 2>/dev/null`
-
-### Vault 상태
-!`ls ~/Documents/vault/ 2>/dev/null`
 
 ## 작업
 
-위 디렉토리 목록을 기반으로, 각 skill의 SKILL.md를 Read 도구로 읽어서 name과 description을 추출하라.
-각 hook은 파일명과 첫 줄 주석에서 설명을 추출하라.
+아래 디렉토리들을 Bash 도구(`ls`)로 탐색하라:
+1. `$HOME/.claude/skills/` — 각 하위 디렉토리의 skill.md를 Read로 읽어 name과 description 추출
+2. `$HOME/.claude/hooks/` — 파일명과 첫 줄 주석에서 설명 추출
+3. `$HOME/.claude/agents/` — 에이전트 목록
+4. `$CLAUDE_VAULT_DIR` (미설정 시 `$HOME/Documents/vault/`) — vault 디렉토리 구조 확인
 
 아래 형식으로 정리:
 
@@ -37,7 +25,7 @@ disable-model-invocation: true
 ### Vault (Second Brain)
 | 디렉토리 | 용도 | 자동 기록 |
 |----------|------|----------|
-| sessions/ | 세션 기록 | ✅ session-save hook |
+| sessions/ | 세션 기록 | save-session 스킬 |
 | lessons/ | 교훈/삽질 기록 | ✅ note 스킬 자동 |
 | decisions/ | 아키텍처 의사결정 | ✅ note 스킬 자동 |
 | projects/ | 프로젝트별 지식 | ✅ note 스킬 자동 / init-project.sh |

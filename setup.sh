@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code 환경 부트스트랩
-# 사용법: git clone <repo> && cd claude-code-config && ./setup.sh [옵션]
+# 사용법: git clone <repo> && cd pimp-my-claude && ./setup.sh [옵션]
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -48,9 +48,15 @@ echo "✓ Hooks 설치 ($(ls "$SCRIPT_DIR/hooks/"*.sh | wc -l | tr -d ' ')개)"
 for d in "$SCRIPT_DIR/skills/"/*/; do
   skill_name=$(basename "$d")
   mkdir -p "$CLAUDE_DIR/skills/$skill_name"
-  cp "$d"SKILL.md "$CLAUDE_DIR/skills/$skill_name/"
+  sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$d"SKILL.md > "$CLAUDE_DIR/skills/$skill_name/SKILL.md"
 done
 echo "✓ Skills 설치 ($(ls -d "$SCRIPT_DIR/skills/"*/ | wc -l | tr -d ' ')개)"
+
+# 3-1. agents 복사
+if [ -d "$SCRIPT_DIR/agents/" ] && ls "$SCRIPT_DIR/agents/"*.md &>/dev/null; then
+  cp "$SCRIPT_DIR/agents/"*.md "$CLAUDE_DIR/agents/"
+  echo "✓ Agents 설치 ($(ls "$SCRIPT_DIR/agents/"*.md | wc -l | tr -d ' ')개)"
+fi
 
 # 4. settings.json 병합
 if [ -f "$CLAUDE_DIR/settings.json" ]; then
@@ -72,7 +78,7 @@ fi
 if [ -f "$CLAUDE_DIR/CLAUDE.md" ]; then
   echo "⚠ CLAUDE.md 이미 존재 — 템플릿: $SCRIPT_DIR/CLAUDE-template.md"
 else
-  cp "$SCRIPT_DIR/CLAUDE-template.md" "$CLAUDE_DIR/CLAUDE.md"
+  sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_DIR/CLAUDE.md"
   echo "✓ CLAUDE.md 생성"
 fi
 
@@ -98,6 +104,28 @@ if [ "$INSTALL_VAULT" = true ]; then
       echo "# Claude Code vault path" >> "$SHELL_RC"
       echo "export CLAUDE_VAULT_DIR=\"$VAULT_DIR\"" >> "$SHELL_RC"
       echo "✓ CLAUDE_VAULT_DIR=$VAULT_DIR → $SHELL_RC 에 추가"
+    fi
+  fi
+
+  # vault 경로를 settings.json에 주입 (additionalDirectories + env)
+  if command -v jq &>/dev/null && [ -f "$CLAUDE_DIR/settings.json" ]; then
+    VAULT_TILDE="${VAULT_DIR/#$HOME/\~}"
+
+    # permissions.additionalDirectories에 vault 경로 추가
+    if ! jq -e ".permissions.additionalDirectories // [] | index(\"$VAULT_TILDE\")" "$CLAUDE_DIR/settings.json" &>/dev/null; then
+      jq ".permissions.additionalDirectories = ((.permissions.additionalDirectories // []) + [\"$VAULT_TILDE\"])" \
+        "$CLAUDE_DIR/settings.json" > "$CLAUDE_DIR/settings.json.tmp" \
+        && mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
+      echo "✓ vault 경로 → settings.json additionalDirectories 추가"
+    fi
+
+    # env.CLAUDE_VAULT_DIR 주입 (Claude Code 세션에서 확실히 인식하도록)
+    CURRENT_ENV_VAULT=$(jq -r '.env.CLAUDE_VAULT_DIR // empty' "$CLAUDE_DIR/settings.json")
+    if [ "$CURRENT_ENV_VAULT" != "$VAULT_DIR" ]; then
+      jq ".env.CLAUDE_VAULT_DIR = \"$VAULT_DIR\"" \
+        "$CLAUDE_DIR/settings.json" > "$CLAUDE_DIR/settings.json.tmp" \
+        && mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
+      echo "✓ CLAUDE_VAULT_DIR → settings.json env 추가"
     fi
   fi
 fi

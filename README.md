@@ -29,7 +29,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 
 ## 포함된 기능
 
-### Skills (17개)
+### Skills (18개)
 
 #### 단일 세션 스킬
 | 스킬 | 설명 | 자동 호출 |
@@ -41,6 +41,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
 | `/note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
 | `/recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
+| `/vault-search [키워드]` | vault 전체 검색 (decisions/lessons/areas/resources/projects) | 사용자만 |
 | `/save-session` | 현재 세션 요약을 vault에 저장 | ✅ 세션 마무리 시 자동 |
 | `/daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
 | `/guide` | 설치된 기능 전체 가이드 | 사용자만 |
@@ -69,10 +70,11 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `spec-verifier` | 스펙 대비 검증 전문가 (skeptical 튜닝) | inherit | - |
 | `harness-tester` | harness 컴포넌트 검증 (hook/skill/agent/setting) | inherit | - |
 
-### Hooks (4개)
+### Hooks (5개)
 
 | 훅 | 이벤트 | 설명 |
 |----|--------|------|
+| vault-briefing | SessionStart | 세션 시작 시 vault 브리핑 (통계, TODO, 최근 교훈, 프로젝트 컨텍스트) |
 | block-dangerous | PreToolUse (Bash) | rm -rf, git push --force 등 차단 |
 | protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
 | auto-format | PostToolUse (Write/Edit) | black, clang-format, prettier 자동 적용 |
@@ -130,8 +132,8 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 ```
 ├── setup.sh                  원클릭 설치
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
-├── hooks/ (4개)              hook 스크립트
-├── skills/ (17개)            skill 정의
+├── hooks/ (5개)              hook 스크립트
+├── skills/ (18개)            skill 정의
 ├── agents/ (8개)             custom agent 정의
 ├── rules-templates/ (3개)    cpp, python, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿

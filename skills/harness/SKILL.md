@@ -2,7 +2,7 @@
 name: harness
 description: |
   Claude Code harness 컴포넌트 개발. hook/skill/agent/설정 생성 및 테스트.
-  소스 레포(~/Documents/claude-code-config/)에서 개발 → ~/.claude/에 배포.
+  소스 레포({{REPO_DIR}}/)에서 개발 → ~/.claude/에 배포.
   Use when: "harness", "hook 만들어", "skill 추가", "agent 추가" 요청 시.
 argument-hint: "[컴포넌트 설명]"
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent
@@ -12,7 +12,7 @@ effort: high
 ## Harness Engineering (Build Loop 포함)
 
 Claude Code harness 컴포넌트를 체계적으로 개발한다.
-소스 레포(~/Documents/claude-code-config/)가 진실의 원천 — 여기서 개발하고 ~/.claude/에 배포.
+소스 레포({{REPO_DIR}}/)가 진실의 원천 — 여기서 개발하고 ~/.claude/에 배포.
 
 ---
 
@@ -58,7 +58,7 @@ $ARGUMENTS를 파싱하여 컴포넌트 타입을 판별:
 
 `/sdd`와 유사한 implement ↔ verify 루프. harness-tester가 evaluator 역할. max 3회. PASS → Phase 5, FAIL → 피드백 → 재실행.
 
-소스 레포(`~/Documents/claude-code-config/`)에 파일 작성. 컴포넌트별 규칙:
+소스 레포(`{{REPO_DIR}}/`)에 파일 작성. 컴포넌트별 규칙:
 
 | 타입 | 파일 | 규칙 |
 |------|------|------|

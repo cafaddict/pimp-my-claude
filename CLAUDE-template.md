@@ -34,7 +34,7 @@
 - 자동 커밋 금지. 최소 변경 원칙.
 - git commit 전에 변경 내용이 프로젝트 README에 반영되어야 하는지 확인하고, 필요하면 업데이트. 단순 버그 수정은 불필요, API/기능/설정 변경은 필요.
 - 실수 발생 시 이 파일에 즉시 교훈 추가 (living document)
-- ~/.claude/ 의 hook/skill을 수정할 때는 ~/Documents/claude-code-config/ 레포에도 반영 + README.md 업데이트
+- ~/.claude/ 의 hook/skill을 수정할 때는 {{REPO_DIR}}/ 레포에도 반영 + README.md 업데이트
 
 ## Vault (Second Brain)
 작업 중 중요한 결정, 발견, 교훈이 있으면 **자동으로 vault에 기록하라** (note 스킬 사용).
@@ -43,7 +43,7 @@
 - 실수/삽질에서 배운 것 → vault의 lessons/에 기록 (note 스킬)
 - 새 세션 시작 시 vault의 lessons/와 decisions/를 참고하여 같은 실수/재논의 방지
 
-- Custom Skills: ~/.claude/skills/ 에 17개 설치됨. /guide로 확인.
+- Custom Skills: ~/.claude/skills/ 에 18개 설치됨. /guide로 확인.
 
 ## Tips
 - `&` 접두사: 원격 샌드박스에서 무거운 분석 오프로드

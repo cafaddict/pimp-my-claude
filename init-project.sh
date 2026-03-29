@@ -1,6 +1,6 @@
 #!/bin/bash
 # 프로젝트 초기화: .claude/rules/ + vault 프로젝트 폴더
-# 사용법: ~/Documents/claude-code-config/init-project.sh [언어...]
+# 사용법: ./init-project.sh [언어...]
 # 예시:   init-project.sh cpp python
 #         init-project.sh python
 #         init-project.sh              (기본: cpp python)
