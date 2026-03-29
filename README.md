@@ -54,7 +54,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/debug-team` | Agent Teams | 경쟁적 가설 디버깅 (3명이 서로 반증) |
 | `/feature-team [피처들]` | Subagent + worktree | 병렬 피처 개발 (피처당 1 에이전트, 격리) |
 | `/tdd [기능들]` | Subagent | TDD 사이클 (기능 간 병렬, 기능 내 RED→GREEN 순차) |
-| `/sdd [요구사항]` | Subagent Loop | Spec-Driven Development (스펙→구현↔검증 피드백 루프) |
+| `/sdd [요구사항]` | Subagent Loop | Spec-Driven Development (스펙→구현↔검증 피드백 루프, `--reverse`로 코드→스펙 역추출) |
 | `/harness [설명]` | Subagent Loop | Harness 컴포넌트 개발 (스펙→구현↔테스트→배포) |
 
 ### Agents (8개)
@@ -66,7 +66,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `implementer` | 코드 구현 (worktree 격리) | inherit | worktree |
 | `architect` | 아키텍처/설계 분석 (읽기전용, 메모리 축적) | inherit | - |
 | `researcher` | 리서치 전문가 (웹 검색, 문서, 코드베이스) | inherit | - |
-| `spec-writer` | 스펙 형식화 전문가 (요구사항→구조화된 스펙) | inherit | - |
+| `spec-writer` | 스펙 형식화 전문가 (요구사항→스펙, 코드→스펙 역추출) | inherit | - |
 | `spec-verifier` | 스펙 대비 검증 전문가 (skeptical 튜닝) | inherit | - |
 | `harness-tester` | harness 컴포넌트 검증 (hook/skill/agent/setting) | inherit | - |
 

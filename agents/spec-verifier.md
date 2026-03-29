@@ -54,6 +54,14 @@ Parse every section: Interfaces, Behaviors, Constraints, Acceptance Criteria, Te
 - Code paths that don't match any spec behavior (unexpected additions)
 - TODO/FIXME/stub/placeholder in the implementation → automatic FAIL
 
+### Reverse-spec context (when spec frontmatter contains `source: reverse`)
+
+이 스펙은 코드에서 역추출되었으므로 코드-스펙 일치는 기대되는 것이다.
+**갭 분석에 집중**:
+- 행위별 테스트 존재 여부, 에러 경로 테스트 여부가 핵심
+- "Unexpected code not in spec" → "스펙이 코드를 완전히 캡처하지 못함"으로 해석
+- Verdict 기준: PASS = 모든 행위에 테스트 존재 / PARTIAL = 일부 미테스트 / FAIL = 대부분 미테스트
+
 ## Skeptical tuning — CRITICAL
 
 These rules override your default tendencies:
@@ -119,6 +127,11 @@ verdict: pass | partial | fail
 1. [What to fix, with file:line references]
 2. [What to add]
 3. [What to change]
+
+<If source is reverse — provide test gap analysis instead:>
+1. [Untested behaviors — which Given/When/Then has no test]
+2. [Error paths without test coverage]
+3. [Suggested test scenarios to add]
 ```
 
 ## Rules

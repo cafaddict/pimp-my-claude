@@ -3,8 +3,9 @@ name: sdd
 description: |
   Spec-Driven Development. 요구사항을 스펙으로 형식화 → 승인 → 구현 ↔ 검증 피드백 루프.
   Generator-Evaluator 패턴으로 품질 수렴.
-  Use when: "스펙 먼저", "spec-driven", "sdd" 요청 시.
-argument-hint: "[요구사항 설명]"
+  --reverse 모드: 기존 코드에서 스펙을 역추출.
+  Use when: "스펙 먼저", "spec-driven", "sdd", "reverse spec", "역스펙" 요청 시.
+argument-hint: "[요구사항 설명] 또는 [--reverse 대상경로 [--scope 분석초점]]"
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 effort: high
 ---
@@ -15,6 +16,20 @@ effort: high
 검증 실패 시 피드백을 주고 다시 구현 — 품질이 수렴할 때까지 반복.
 
 ---
+
+### Mode Detection
+
+$ARGUMENTS 파싱:
+- `--reverse` 플래그 있으면 → **Reverse Mode** (Phase 1-R → 2-R → 3-R → 4-R)
+- 없으면 → **Forward Mode** (기존 Phase 1 → 2 → 3 → 4)
+
+Reverse Mode 파라미터:
+- **target**: `--reverse` 뒤의 경로(들). 파일 또는 디렉토리. 없으면 사용자에게 질문.
+- **scope** (선택): `--scope "설명"` — 분석 초점 힌트. 없으면 전체 분석.
+
+---
+
+## Forward Mode
 
 ### Phase 1: SPEC
 
@@ -90,3 +105,66 @@ Parallel 모드: 모듈별 implementer를 `isolation: worktree`로 병렬 실행
 - 스펙이 계약 — implementer에게 요구사항 원문 직접 전달 금지
 - spec-verifier 판단 존중 (skeptical 튜닝이 핵심)
 - 피드백은 **최신 report + 미해결 항목 요약**만 전달 (누적 X)
+
+---
+
+## Reverse Mode
+
+기존 코드에서 스펙을 역추출한다. 레거시 문서화, 리팩토링 전 baseline 확보, 테스트 갭 분석에 사용.
+
+---
+
+### Phase 1-R: REVERSE SPEC
+
+`spec-writer` 에이전트 호출 (reverse 모드):
+- 프롬프트에 `[REVERSE MODE]` 접두사 추가
+- 입력: target 경로 + scope(있으면)
+- `.specs/<spec-id>.md` 생성 (status: `draft`, `source: reverse`, `target: <경로>`)
+- spec-id: 대상 모듈/파일명 기반 자동 생성 (예: `auth-login-reverse`)
+- `.specs/` 디렉토리 없으면 생성
+
+---
+
+### Phase 2-R: REVIEW
+
+Phase 2와 동일하나 다음을 강조:
+1. **Open Questions 필수 확인** — 코드에서 추론한 의도가 맞는지 사용자 확인
+2. **누락된 비즈니스 컨텍스트** — 코드에 없지만 중요한 요구사항이 있는지 질문
+3. **의도 vs 우연** — "이 동작이 의도된 것인가, 버그인가?" 확인
+
+승인 → Phase 3-R / 수정 → spec-writer 재호출 / 거부 → 종료.
+
+---
+
+### Phase 3-R: POST-APPROVAL
+
+사용자에게 다음 단계를 선택하게 한다:
+
+1. **Save only** (문서화)
+   - 스펙을 `.specs/`에 최종 저장 (status: `approved`)
+   - → Phase 4-R
+
+2. **Verify (갭 분석)**
+   - `spec-verifier` 에이전트 호출: 스펙 파일 + target 경로 (동일 코드)
+   - 초점: 어떤 행위가 테스트되지 않았는지, 에러 경로 커버리지
+   - `.specs/<spec-id>.verified-gap.md`에 저장
+   - → Phase 4-R
+
+3. **Baseline + Forward SDD**
+   - 역추출 스펙을 baseline으로 `.specs/`에 저장 (status: `baseline`)
+   - 사용자에게 추가 요구사항 입력 받음
+   - Forward Mode Phase 1부터 시작. spec-writer에게 baseline 스펙을 "기존 동작"으로 전달
+   - baseline 스펙의 행위를 깨뜨리지 않는 것이 constraint로 자동 추가됨
+
+---
+
+### Phase 4-R: REPORT
+
+보고 형식: spec ID, source: reverse, target 경로, status, 선택한 후속 작업.
+
+Verify를 실행한 경우: 갭 분석 결과 요약 (테스트 커버리지 비율, 미테스트 행위 목록).
+
+**Vault 통합** (note 스킬):
+- 최종 스펙 → `vault/projects/<project>/specs/<spec-id>.md`에 보관
+- 갭 분석 결과가 significant하면 → `vault/lessons/`에 기록
+- Baseline + Forward SDD 선택 시 → `vault/decisions/`에 리팩토링 결정 기록
