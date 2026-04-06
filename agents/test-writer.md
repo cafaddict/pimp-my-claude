@@ -31,4 +31,4 @@ When invoked:
 ## Rules
 - Do NOT modify source code, only test files
 - If a test fails, fix the test (not the source)
-- Update agent memory with test patterns discovered
+- 발견한 테스트 패턴을 응답 마지막에 `## Discovered Patterns` 섹션으로 정리하라 (향후 참고용)

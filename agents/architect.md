@@ -68,4 +68,4 @@ vault-summary:
 - Do NOT write or edit code
 - Base recommendations on what you actually read, not assumptions
 - If you find something good, say so — not just problems
-- Update agent memory with architecture patterns discovered
+- 발견한 아키텍처 패턴을 응답 마지막에 `## Discovered Patterns` 섹션으로 정리하라 (향후 참고용)

@@ -8,6 +8,7 @@ CLAUDE_DIR="$HOME/.claude"
 INSTALL_SDK=false
 INSTALL_VAULT=false
 INSTALL_MCP=false
+FORCE_CLAUDE_MD=false
 VAULT_DIR="${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}"
 
 for arg in "$@"; do
@@ -16,6 +17,7 @@ for arg in "$@"; do
     --with-vault) INSTALL_VAULT=true ;;
     --with-mcp)   INSTALL_MCP=true ;;
     --all)        INSTALL_SDK=true; INSTALL_VAULT=true; INSTALL_MCP=true ;;
+    --force-claude-md) FORCE_CLAUDE_MD=true ;;
     --help|-h)
       echo "사용법: ./setup.sh [옵션]"
       echo ""
@@ -23,7 +25,8 @@ for arg in "$@"; do
       echo "  --with-sdk    Agent SDK 도구 설치 (Python 3.10+ 필요)"
       echo "  --with-vault  Obsidian vault 구조 생성"
       echo "  --with-mcp    markdown-vault-mcp 설치 + Claude Code MCP 등록"
-      echo "  --all         위 3개 전부 설치"
+      echo "  --all              위 3개 전부 설치"
+      echo "  --force-claude-md  CLAUDE.md 덮어쓰기 (기존 백업 후 교체)"
       echo "  --help        이 도움말 표시"
       echo ""
       echo "환경변수:"
@@ -75,8 +78,12 @@ else
 fi
 
 # 5. CLAUDE.md
-if [ -f "$CLAUDE_DIR/CLAUDE.md" ]; then
-  echo "⚠ CLAUDE.md 이미 존재 — 템플릿: $SCRIPT_DIR/CLAUDE-template.md"
+if [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ "$FORCE_CLAUDE_MD" = false ]; then
+  echo "⚠ CLAUDE.md 이미 존재 — 템플릿: $SCRIPT_DIR/CLAUDE-template.md (--force-claude-md 로 덮어쓰기)"
+elif [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ "$FORCE_CLAUDE_MD" = true ]; then
+  cp "$CLAUDE_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md.bak"
+  sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_DIR/CLAUDE.md"
+  echo "✓ CLAUDE.md 덮어쓰기 (백업: CLAUDE.md.bak)"
 else
   sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_DIR/CLAUDE.md"
   echo "✓ CLAUDE.md 생성"

@@ -2,6 +2,7 @@
 name: prompt
 description: "프롬프트 구조화 도우미. 자연어 요청을 효과적인 프롬프트로 변환."
 disable-model-invocation: true
+effort: medium
 ---
 
 ## 프롬프트 변환기
@@ -32,7 +33,7 @@ Output: [코드? 설명? JSON? diff?]
 | **Build** | 새 코드 작성, 기능 구현 | 코드 작성에만 집중 |
 | **Learn** | 개념 이해, 설명 요청 | 왜 이런 구조인지 설명 |
 | **Critique** | 코드 검토, 개선점 찾기 | /review 스킬 사용 권장 |
-| **Debug** | 에러 수정, 문제 해결 | /debug 스킬 사용 권장 |
+| **Debug** | 에러 수정, 문제 해결 | /debugit 스킬 사용 권장 |
 
 ### 스코프 판단
 

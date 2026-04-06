@@ -43,7 +43,7 @@
 - 실수/삽질에서 배운 것 → vault의 lessons/에 기록 (note 스킬)
 - 새 세션 시작 시 vault의 lessons/와 decisions/를 참고하여 같은 실수/재논의 방지
 
-- Custom Skills: ~/.claude/skills/ 에 18개 설치됨. /guide로 확인.
+- Custom Skills: ~/.claude/skills/ 에 설치됨. /guide로 확인.
 
 ## Tips
 - `&` 접두사: 원격 샌드박스에서 무거운 분석 오프로드

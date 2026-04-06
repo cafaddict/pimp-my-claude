@@ -1,7 +1,6 @@
 ---
 name: daily
 description: "하루 마무리 정리. 현재 세션 포함, 오늘 세션들을 종합하여 daily note 생성/업데이트."
-disable-model-invocation: true
 allowed-tools: Read, Write, Glob, Grep, Bash
 effort: high
 ---

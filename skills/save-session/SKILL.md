@@ -55,11 +55,10 @@ cwd: <현재 작업 디렉토리>
    - 이미 동일/유사한 decision이 vault에 있으면 skip (중복 방지)
    - 사소한 결정 (파일명 변경 등)은 기록하지 마라 — 재사용 가치 있는 것만
 
-5. git stage (commit은 하지 않음 — /daily 또는 다음 vault 쓰기가 통합 commit):
+5. git sync:
 ```bash
-cd <vault> && git add sessions/ decisions/
+cd <vault> && git add sessions/ decisions/ && git commit -m "session: YYYY-MM-DD HHMM" --quiet && git push --quiet &
 ```
-단독 실행 시 (daily 없이 세션 저장만): `git commit -m "session: YYYY-MM-DD HHMM" --quiet && git push --quiet &`
 
 ### 주의
 - 간결하게 작성. 대화 전체를 복사하지 마라.

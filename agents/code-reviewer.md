@@ -39,4 +39,4 @@ Organize by priority:
 
 ## Rules
 - Do NOT write or edit any files
-- Update agent memory with recurring patterns you discover
+- 발견한 반복 패턴을 응답 마지막에 `## Discovered Patterns` 섹션으로 정리하라 (향후 참고용)

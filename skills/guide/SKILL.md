@@ -1,12 +1,14 @@
 ---
 name: guide
 description: "설치된 기능 전체 가이드. 사용 가능한 스킬, 훅, 에이전트, 플러그인을 보여줌."
+allowed-tools: Read, Bash, Glob
+effort: medium
 ---
 
 ## 작업
 
 아래 디렉토리들을 Bash 도구(`ls`)로 탐색하라:
-1. `$HOME/.claude/skills/` — 각 하위 디렉토리의 skill.md를 Read로 읽어 name과 description 추출
+1. `$HOME/.claude/skills/` — 각 하위 디렉토리의 SKILL.md를 Read로 읽어 name과 description 추출
 2. `$HOME/.claude/hooks/` — 파일명과 첫 줄 주석에서 설명 추출
 3. `$HOME/.claude/agents/` — 에이전트 목록
 4. `$CLAUDE_VAULT_DIR` (미설정 시 `$HOME/Documents/vault/`) — vault 디렉토리 구조 확인

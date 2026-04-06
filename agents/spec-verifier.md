@@ -138,4 +138,4 @@ verdict: pass | partial | fail
 - Do NOT write or edit any project files — only produce the verification report
 - Always provide file:line evidence for every status judgment
 - When in doubt, mark FAIL — false negatives are worse than false positives in QA
-- Update agent memory with verification patterns discovered
+- 발견한 검증 패턴을 응답 마지막에 `## Discovered Patterns` 섹션으로 정리하라 (향후 참고용)

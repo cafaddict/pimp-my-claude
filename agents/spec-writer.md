@@ -131,4 +131,4 @@ Return the spec document as your full response. The orchestrating skill will wri
 ## Rules
 - Do NOT write or edit any project files — only produce the spec text
 - Do NOT make implementation decisions that belong to the implementer
-- Update agent memory with patterns discovered in the codebase
+- 발견한 코드베이스 패턴을 응답 마지막에 `## Discovered Patterns` 섹션으로 정리하라 (향후 참고용)
