@@ -92,11 +92,13 @@ vault/
 ├── resources/       참고 자료, 패턴 (/note 스킬 자동)
 ├── areas/           지속 관리 영역 (수동)
 ├── daily-notes/     일일 정리 (/daily 스킬)
-└── templates/       노트 템플릿 4종
+└── templates/       노트 템플릿 6종 (session, decision, daily, project, lesson, resource)
 ```
 
 vault 경로: `$CLAUDE_VAULT_DIR` (기본: `~/Documents/vault`).
 `--with-vault` 설치 시 쉘 rc에 자동 등록.
+
+**노트 품질 보장**: enriched frontmatter (summary, topics, keywords, confidence), 링크 무결성 검증 (Glob 확인 + 양방향 링크 + 고아 방지), 내용 깊이 요구 (인사이트, 대안 비교, 적용 방법). 시간은 KST 기준.
 
 ### MCP 시맨틱 검색 (--with-mcp)
 
@@ -121,11 +123,12 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 ./init-project.sh cpp python    # .claude/rules/ + vault 프로젝트 폴더 생성
 ```
 
-| 템플릿 | 적용 대상 |
-|--------|----------|
-| cpp.md | *.cpp, *.hpp, *.h, *.cc |
-| python.md | *.py |
-| testing.md | *test*, *spec*, tests/** |
+| 템플릿 | 적용 대상 | 배포 |
+|--------|----------|------|
+| vault-notes.md | **/vault/**/*.md | **전역** (`~/.claude/rules/`, setup.sh) |
+| cpp.md | *.cpp, *.hpp, *.h, *.cc | 프로젝트별 (init-project.sh) |
+| python.md | *.py | 프로젝트별 (init-project.sh) |
+| testing.md | *test*, *spec*, tests/** | 프로젝트별 (init-project.sh) |
 
 ## 구조
 
@@ -135,7 +138,7 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 ├── hooks/ (5개)              hook 스크립트
 ├── skills/ (18개)            skill 정의
 ├── agents/ (8개)             custom agent 정의
-├── rules-templates/ (3개)    cpp, python, testing
+├── rules-templates/ (4개)    vault-notes (전역), cpp, python, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿
 ├── agent-tools/              Agent SDK Python 프로젝트
 ├── settings-template.json    hooks/env 설정

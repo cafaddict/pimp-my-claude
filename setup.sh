@@ -40,7 +40,7 @@ echo "=== Claude Code 환경 설정 ==="
 echo ""
 
 # 1. 필수 디렉토리 생성
-mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents"
+mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/rules"
 
 # 2. hooks 복사 + 실행 권한
 cp "$SCRIPT_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/"
@@ -59,6 +59,12 @@ echo "✓ Skills 설치 ($(ls -d "$SCRIPT_DIR/skills/"*/ | wc -l | tr -d ' ')개
 if [ -d "$SCRIPT_DIR/agents/" ] && ls "$SCRIPT_DIR/agents/"*.md &>/dev/null; then
   cp "$SCRIPT_DIR/agents/"*.md "$CLAUDE_DIR/agents/"
   echo "✓ Agents 설치 ($(ls "$SCRIPT_DIR/agents/"*.md | wc -l | tr -d ' ')개)"
+fi
+
+# 3-2. global rules 복사 (vault-notes 등)
+if ls "$SCRIPT_DIR/rules-templates/vault-notes.md" &>/dev/null; then
+  cp "$SCRIPT_DIR/rules-templates/vault-notes.md" "$CLAUDE_DIR/rules/"
+  echo "✓ Global rules 설치 (vault-notes)"
 fi
 
 # 4. settings.json 병합
@@ -94,7 +100,17 @@ if [ "$INSTALL_VAULT" = true ]; then
   echo ""
   echo "--- Vault 구조 생성 ---"
   if [ -d "$VAULT_DIR" ] && [ "$(ls -A "$VAULT_DIR" 2>/dev/null)" ]; then
-    echo "⚠ $VAULT_DIR 이미 존재하고 비어있지 않음 — 건너뜀"
+    echo "⚠ $VAULT_DIR 이미 존재 — 구조 건너뜀, 템플릿/CLAUDE.md 업데이트"
+    # 기존 vault: 템플릿만 업데이트 (기존 노트는 건드리지 않음)
+    if [ -d "$VAULT_DIR/templates" ]; then
+      cp "$SCRIPT_DIR/vault-template/templates/"*.md "$VAULT_DIR/templates/"
+      echo "  ✓ Vault 템플릿 업데이트"
+    fi
+    if [ -f "$VAULT_DIR/CLAUDE.md" ]; then
+      cp "$VAULT_DIR/CLAUDE.md" "$VAULT_DIR/CLAUDE.md.bak"
+      cp "$SCRIPT_DIR/vault-template/CLAUDE.md" "$VAULT_DIR/CLAUDE.md"
+      echo "  ✓ Vault CLAUDE.md 업데이트 (백업: CLAUDE.md.bak)"
+    fi
   else
     mkdir -p "$VAULT_DIR"
     cp -r "$SCRIPT_DIR/vault-template/"* "$VAULT_DIR/"
