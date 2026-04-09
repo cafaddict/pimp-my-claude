@@ -1,5 +1,5 @@
 ---
-name: save-session
+name: vault-save
 description: |
   현재 세션을 vault에 저장. 세션 마무리 시 자동으로 사용하라.
   Use when: 사용자가 "끝", "마무리", "세션 저장", "오늘 여기까지" 등을 말할 때.
@@ -62,13 +62,13 @@ topics: [<2-5개 주제 키워드>]
 
 5. **결정사항 → decisions/ 자동 분리**:
    세션의 `## 결정사항`에 기록된 항목 중 아키텍처/기술 선택에 해당하는 것이 있으면,
-   /note 스킬로 vault `decisions/`에 ADR 형식으로 자동 기록하라.
+   /vault-note 스킬로 vault `decisions/`에 ADR 형식으로 자동 기록하라.
    - 이미 동일/유사한 decision이 vault에 있으면 skip (중복 방지)
    - 사소한 결정 (파일명 변경 등)은 기록하지 마라 — 재사용 가치 있는 것만
 
 6. git sync:
 ```bash
-cd <vault> && git add sessions/ decisions/ projects/ && git commit -m "session: YYYY-MM-DD-HHMM-<topic>" --quiet && git push --quiet &
+cd <vault> && git pull --rebase && git add sessions/ decisions/ projects/ && git commit -m "session: YYYY-MM-DD-HHMM-<topic>" && git push
 ```
 
 ### 주의

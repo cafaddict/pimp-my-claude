@@ -77,7 +77,7 @@ BRIEFING="[Vault Briefing]\n${STATS}"
 [ -n "$TODOS" ] && BRIEFING="${BRIEFING}\n${TODOS}"
 [ -n "$LESSONS" ] && BRIEFING="${BRIEFING}\n${LESSONS}"
 
-BRIEFING="${BRIEFING}\n/vault-search [keyword]로 vault 검색 가능. /recall [keyword]로 세션 복원 가능."
+BRIEFING="${BRIEFING}\n/vault-search [keyword]로 vault 검색 가능. /vault-recall [keyword]로 세션 복원 가능."
 
 # --- JSON 출력 (jq로 안전한 이스케이핑) ---
 

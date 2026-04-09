@@ -22,12 +22,12 @@ for arg in "$@"; do
       echo "사용법: ./setup.sh [옵션]"
       echo ""
       echo "옵션:"
-      echo "  --with-sdk    Agent SDK 도구 설치 (Python 3.10+ 필요)"
-      echo "  --with-vault  Obsidian vault 구조 생성"
-      echo "  --with-mcp    markdown-vault-mcp 설치 + Claude Code MCP 등록"
+      echo "  --with-sdk         Agent SDK 도구 설치 (Python 3.10+ 필요)"
+      echo "  --with-vault       Obsidian vault 구조 생성"
+      echo "  --with-mcp         MCP 시맨틱 검색 서버 설치 (fastembed + sqlite-vec)"
       echo "  --all              위 3개 전부 설치"
       echo "  --force-claude-md  CLAUDE.md 덮어쓰기 (기존 백업 후 교체)"
-      echo "  --help        이 도움말 표시"
+      echo "  --help             이 도움말 표시"
       echo ""
       echo "환경변수:"
       echo "  CLAUDE_VAULT_DIR  vault 경로 (기본: ~/Documents/vault)"
@@ -153,35 +153,42 @@ if [ "$INSTALL_VAULT" = true ]; then
   fi
 fi
 
-# 7. MCP 연동 (옵션)
+# 7. MCP 시맨틱 검색 서버 (옵션)
 if [ "$INSTALL_MCP" = true ]; then
   echo ""
-  echo "--- MCP 연동 (markdown-vault-mcp) ---"
+  echo "--- MCP 시맨틱 검색 서버 설치 ---"
 
   if ! command -v python3 &>/dev/null; then
     echo "✗ python3 미설치. MCP 설치를 건너뜁니다."
   else
-    # MCP venv — vault 밖에 설치 (Obsidian이 .venv 내 .md 파일을 인식하는 문제 방지)
-    MCP_VENV="$HOME/.local/share/markdown-vault-mcp/venv"
-    mkdir -p "$(dirname "$MCP_VENV")"
-    if [ ! -d "$MCP_VENV" ]; then
-      python3 -m venv "$MCP_VENV"
+    MCP_DIR="$SCRIPT_DIR/mcp"
+    VENV_DIR="$MCP_DIR/.venv"
+
+    if [ ! -d "$VENV_DIR" ]; then
+      python3 -m venv "$VENV_DIR"
+      echo "  Python venv 생성"
     fi
-    "$MCP_VENV/bin/pip" install "markdown-vault-mcp[all]" --quiet
-    echo "✓ markdown-vault-mcp 설치 완료"
+
+    "$VENV_DIR/bin/pip" install -q -r "$MCP_DIR/requirements.txt"
+    echo "✓ Dependencies 설치 완료"
+
+    # 임베딩 모델 사전 다운로드 (~220MB)
+    "$VENV_DIR/bin/python" -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')" 2>/dev/null
+    echo "✓ Embedding 모델 다운로드 완료 (paraphrase-multilingual-MiniLM-L12-v2)"
 
     # Claude Code MCP 등록
     if command -v claude &>/dev/null; then
       claude mcp remove vault 2>/dev/null || true
-      claude mcp add vault \
-        -e "MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR" \
-        -e "EMBEDDING_PROVIDER=fastembed" \
-        -- "$MCP_VENV/bin/markdown-vault-mcp" serve
-      echo "✓ Claude Code MCP 등록 완료"
+      claude mcp add vault -s user \
+        -e CLAUDE_VAULT_DIR="$VAULT_DIR" \
+        -- "$VENV_DIR/bin/python" "$MCP_DIR/server.py"
+      echo "✓ MCP 서버 등록: vault (user scope — 모든 프로젝트에서 사용 가능)"
     else
       echo "⚠ claude CLI 미설치 — MCP 수동 등록 필요:"
-      echo "  claude mcp add vault -e MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR -e EMBEDDING_PROVIDER=fastembed -- $MCP_VENV/bin/markdown-vault-mcp serve"
+      echo "  claude mcp add vault -s user -e CLAUDE_VAULT_DIR=$VAULT_DIR -- $VENV_DIR/bin/python $MCP_DIR/server.py"
     fi
+
+    echo "  (첫 검색 시 자동 인덱싱 ~15초)"
   fi
 fi
 
@@ -217,7 +224,7 @@ echo "  새 Claude Code 세션 시작 → 자동 적용"
 echo "  /guide                  → 설치된 기능 확인"
 echo "  ./init-project.sh       → 프로젝트별 rules/ 초기화"
 if [ "$INSTALL_VAULT" = true ]; then
-  echo "  /recall [키워드]        → 이전 세션 컨텍스트 복원"
+  echo "  /vault-recall [키워드]  → 이전 세션 컨텍스트 복원"
 fi
 if [ "$INSTALL_SDK" = true ]; then
   echo "  source agent-tools/.venv/bin/activate → SDK 도구 활성화"

@@ -63,9 +63,9 @@ $ARGUMENTS가 비어있으면 사용자에게 태스크명을 물어라.
 - `.claude/tasks/$ARGUMENTS/lessons.md` — 이 태스크 한정
 - `.claude/tasks/lessons.md` — 프로젝트 전체에 적용되는 교훈
 
-프로젝트 범위를 넘어 재사용 가능한 교훈은 /note 스킬로 vault `lessons/`에도 기록하라.
+프로젝트 범위를 넘어 재사용 가능한 교훈은 /vault-note 스킬로 vault `lessons/`에도 기록하라.
 `.claude/tasks/lessons.md`는 프로젝트 로컬이므로 다른 프로젝트에서 참조할 수 없다.
-vault에 기록하면 /recall로 cross-project 검색이 가능해진다.
+vault에 기록하면 /vault-recall로 cross-project 검색이 가능해진다.
 
 교훈 형식:
 ```markdown

@@ -8,6 +8,7 @@ build/
 # venv
 .venv/
 agent-tools/.venv/
+mcp/.venv/
 
 # IDE
 .vscode/

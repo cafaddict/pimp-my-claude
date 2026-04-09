@@ -43,7 +43,7 @@ Lead: synthesize the surviving hypothesis with strongest evidence.
 ```
 
 ### Vault 기록
-근본 원인 합의 도출 후, 오케스트레이터가 /note 스킬로 vault `lessons/`에 기록하라.
+근본 원인 합의 도출 후, 오케스트레이터가 /vault-note 스킬로 vault `lessons/`에 기록하라.
 기록 대상: surviving hypothesis, 검증 방법, 교훈.
 조사관 agent가 직접 vault에 쓰지 않는다 — 오케스트레이터가 종합 후 기록.
 

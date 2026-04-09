@@ -18,9 +18,9 @@ cd pimp-my-claude
 |------|------|----------|
 | (기본) | hooks, skills, agents, settings, CLAUDE.md | Claude Code |
 | `--with-vault` | Obsidian vault 구조 생성 + `CLAUDE_VAULT_DIR` 환경변수 등록 | - |
-| `--with-mcp` | markdown-vault-mcp + 시맨틱 검색 | Python 3.10+ |
+| `--with-mcp` | MCP 시맨틱 검색 서버 (BM25 + fastembed + sqlite-vec) | Python 3.10+ |
 | `--with-sdk` | Agent SDK 도구 (claude-review 등) | Python 3.10+ |
-| `--all` | 위 3개 전부 | Python 3.10+ |
+| `--all` | 위 3개 전부 설치 | Python 3.10+ |
 
 ```bash
 # vault 경로 커스텀 (기본: ~/Documents/vault)
@@ -29,7 +29,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 
 ## 포함된 기능
 
-### Skills (18개)
+### Skills (19개, vault-* 7개 + 개발 12개)
 
 #### 단일 세션 스킬
 | 스킬 | 설명 | 자동 호출 |
@@ -39,11 +39,12 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/perf` | 성능 분석 (프로파일링 → 병목 → 최적화 → 벤치마크) | 가능 |
 | `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 | 사용자만 |
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
-| `/note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
-| `/recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
+| `/vault-note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
+| `/vault-recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/vault-search [키워드]` | vault 전체 검색 (decisions/lessons/areas/resources/projects) | 사용자만 |
-| `/save-session` | 현재 세션 요약을 vault에 저장 | ✅ 세션 마무리 시 자동 |
-| `/daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
+| `/vault-save` | 현재 세션 요약을 vault에 저장 | ✅ 세션 마무리 시 자동 |
+| `/vault-daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
+| `/vault-add-project [언어...]` | 프로젝트 초기화 — `.claude/rules/` + vault 프로젝트 폴더 생성 | 사용자만 |
 | `/guide` | 설치된 기능 전체 가이드 | 사용자만 |
 
 #### 팀/멀티에이전트 스킬
@@ -85,13 +86,13 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 ```
 vault/
 ├── CLAUDE.md        vault 운영 매뉴얼 (Claude 자동 참조)
-├── sessions/        세션 기록 (/save-session 스킬)
-├── lessons/         교훈/삽질 기록 (/note 스킬 자동)
-├── decisions/       ADR 아키텍처 의사결정 (/note 스킬 자동)
-├── projects/        프로젝트별 지식 (/note, init-project.sh)
-├── resources/       참고 자료, 패턴 (/note 스킬 자동)
+├── sessions/        세션 기록 (/vault-save)
+├── lessons/         교훈/삽질 기록 (/vault-note 자동)
+├── decisions/       ADR 아키텍처 의사결정 (/vault-note 자동)
+├── projects/        프로젝트별 지식 (/vault-note, /vault-add-project)
+├── resources/       참고 자료, 패턴 (/vault-note 자동)
 ├── areas/           지속 관리 영역 (수동)
-├── daily-notes/     일일 정리 (/daily 스킬)
+├── daily-notes/     일일 정리 (/vault-daily)
 └── templates/       노트 템플릿 6종 (session, decision, daily, project, lesson, resource)
 ```
 
@@ -102,10 +103,15 @@ vault 경로: `$CLAUDE_VAULT_DIR` (기본: `~/Documents/vault`).
 
 ### MCP 시맨틱 검색 (--with-mcp)
 
-markdown-vault-mcp로 vault에 시맨틱 검색 제공:
-- FastEmbed (ONNX, CPU-only) — API 키/GPU 불필요
-- 하이브리드 검색 (키워드 + 벡터 시맨틱)
+BM25 키워드 + 벡터 시맨틱 하이브리드 검색을 제공하는 자체 MCP 서버:
+- **fastembed** (ONNX, CPU-only) — API 키/GPU 불필요
+- **paraphrase-multilingual-MiniLM-L12-v2** — 한/영 다국어 임베딩 (384dim, ~220MB)
+- **sqlite-vec + FTS5** — 단일 .db 파일, 외부 DB 불필요
+- **RRF 융합** — 키워드와 시맨틱 결과를 자동 결합
+- **자동 증분 인덱싱** — 검색 시 변경된 파일 자동 반영
 - headless Linux 서버에서도 동작 (Obsidian 불필요)
+
+MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니다.
 
 ### Agent SDK 도구 (--with-sdk)
 
@@ -136,8 +142,9 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 ├── setup.sh                  원클릭 설치
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
 ├── hooks/ (5개)              hook 스크립트
-├── skills/ (18개)            skill 정의
+├── skills/ (19개)            skill 정의
 ├── agents/ (8개)             custom agent 정의
+├── mcp/                      자체 MCP 시맨틱 검색 서버 (fastembed + sqlite-vec)
 ├── rules-templates/ (4개)    vault-notes (전역), cpp, python, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿
 ├── agent-tools/              Agent SDK Python 프로젝트
