@@ -101,8 +101,10 @@ repo: <git remote get-url origin, 없으면 빈 문자열>
 
 vault가 git 레포이면:
 ```bash
-cd $VAULT_DIR && git add projects/<프로젝트명>/ && git commit -m "project: init <프로젝트명>" --quiet && git push --quiet &
+cd $VAULT_DIR && git stash && git pull --rebase && git stash pop && git add projects/<프로젝트명>/ && git commit -m "project: init <프로젝트명>" && git push
 ```
+- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
+- **sync 실패 시 원인을 파악하고 해결한 뒤 진행하라. 실패를 무시하고 넘어가지 마라.**
 
 ### 6. 결과 표시
 

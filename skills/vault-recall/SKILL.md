@@ -10,10 +10,12 @@ effort: high
 
 ### 0. vault 동기화
 
-검색 전에 vault를 최신 상태로 맞춘다:
+검색 전에 vault를 최신 상태로 맞춘다. unstaged 변경이 있으면 `git pull --rebase`가 실패하므로 stash 처리 필수:
 ```bash
-cd $VAULT_DIR && git pull --rebase
+cd $VAULT_DIR && git stash && git pull --rebase && git stash pop
 ```
+- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
+- **sync 실패 시 원인을 파악하고 해결한 뒤 다음 단계로 진행하라. 실패를 무시하고 넘어가지 마라.**
 
 ### 1. vault에서 관련 세션 검색
 

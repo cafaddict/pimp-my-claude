@@ -68,8 +68,10 @@ topics: [<2-5개 주제 키워드>]
 
 6. git sync:
 ```bash
-cd <vault> && git pull --rebase && git add sessions/ decisions/ projects/ && git commit -m "session: YYYY-MM-DD-HHMM-<topic>" && git push
+cd <vault> && git stash && git pull --rebase && git stash pop && git add sessions/ decisions/ projects/ && git commit -m "session: YYYY-MM-DD-HHMM-<topic>" && git push
 ```
+- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
+- **sync 실패 시 원인을 파악하고 해결한 뒤 진행하라. 실패를 무시하고 넘어가지 마라.**
 
 ### 주의
 - 간결하되 인사이트는 빠뜨리지 마라. "뭘 했다"만은 부실.
