@@ -1,0 +1,14 @@
+---
+globs: ["*.rs"]
+---
+- Rust edition 2021+ idioms and features
+- Ownership and borrowing first — Arc/Rc only when shared ownership is genuinely needed
+- `Result<T, E>` for fallible operations — no panics in library code, `?` propagation
+- Prefer `thiserror` for library errors, `anyhow` for application errors
+- `#[must_use]` on functions returning important values
+- Prefer iterators and combinators over manual loops when clearer
+- `clippy::pedantic` clean — no `unwrap()` in production paths
+- Derive order: Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize
+- Module structure: `mod.rs` or `<name>.rs` — not both
+- Async: tokio conventions, `Send + Sync` bounds explicit, no blocking in async context
+- cargo fmt auto-applied on save (PostToolUse hook)
