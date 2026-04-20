@@ -40,12 +40,19 @@ echo "=== Claude Code 환경 설정 ==="
 echo ""
 
 # 1. 필수 디렉토리 생성
-mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/rules"
+mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/rules" "$CLAUDE_DIR/bin"
 
 # 2. hooks 복사 + 실행 권한
 cp "$SCRIPT_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/"
 chmod +x "$CLAUDE_DIR/hooks/"*.sh
 echo "✓ Hooks 설치 ($(ls "$SCRIPT_DIR/hooks/"*.sh | wc -l | tr -d ' ')개)"
+
+# 2-1. bin 스크립트 복사 (statusline 등)
+if [ -d "$SCRIPT_DIR/bin/" ] && ls "$SCRIPT_DIR/bin/"*.sh &>/dev/null; then
+  cp "$SCRIPT_DIR/bin/"*.sh "$CLAUDE_DIR/bin/"
+  chmod +x "$CLAUDE_DIR/bin/"*.sh
+  echo "✓ Bin 스크립트 설치 ($(ls "$SCRIPT_DIR/bin/"*.sh | wc -l | tr -d ' ')개)"
+fi
 
 # 3. skills 복사
 for d in "$SCRIPT_DIR/skills/"/*/; do
@@ -93,6 +100,17 @@ elif [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ "$FORCE_CLAUDE_MD" = true ]; then
 else
   sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_DIR/CLAUDE.md"
   echo "✓ CLAUDE.md 생성"
+fi
+
+# 5-1. AGENTS.md symlink (Linux Foundation AAIF 표준 호환 — Cursor/Codex/Windsurf)
+AGENTS_DEST="$CLAUDE_DIR/AGENTS.md"
+if [ -L "$AGENTS_DEST" ]; then
+  : # 이미 symlink 존재 — 그대로 유지
+elif [ -f "$AGENTS_DEST" ]; then
+  echo "⚠ AGENTS.md 이미 파일로 존재 — symlink 생성 건너뜀"
+else
+  ln -s "CLAUDE.md" "$AGENTS_DEST"
+  echo "✓ AGENTS.md → CLAUDE.md symlink (업계 표준 호환)"
 fi
 
 # 6. Vault 구조 생성 (옵션)

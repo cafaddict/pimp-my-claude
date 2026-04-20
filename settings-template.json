@@ -8,6 +8,11 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
   },
+  "autoMemoryDirectory": "~/Documents/vault/auto-memory",
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/bin/statusline.sh"
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -21,6 +26,18 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/prompt-hint.sh",
+            "timeout": 1000
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -28,7 +45,8 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/block-dangerous.sh",
-            "statusMessage": "명령어 안전성 검증..."
+            "statusMessage": "명령어 안전성 검증...",
+            "if": "Bash(rm *) | Bash(git push *) | Bash(git reset *) | Bash(git clean *) | Bash(*DROP TABLE*) | Bash(*DROP DATABASE*)"
           }
         ]
       },
@@ -50,6 +68,30 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/auto-format.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-compact-save.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/subagent-stop-log.sh",
+            "timeout": 2000
           }
         ]
       }
