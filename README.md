@@ -80,7 +80,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | prompt-hint | UserPromptSubmit | 짧고 모호한 프롬프트에 Task/Context/Req/Output 구조 힌트 주입 |
 | block-dangerous | PreToolUse (Bash, `if` 1차 필터) | rm -rf, git push --force, DROP TABLE 등 차단 |
 | protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
-| auto-format | PostToolUse (Write/Edit) | black, clang-format, prettier 자동 적용 |
+| auto-format | PostToolUse (Write/Edit) | black, rustfmt, clang-format, prettier 자동 적용 |
 | pre-compact-save | PreCompact | compaction 직전 transcript를 vault/sessions/pre-compact/ 에 백업 |
 | subagent-stop-log | SubagentStop | 서브에이전트 종료 시 에러 감지 → vault/sessions/subagent-activity.log |
 | notify-done | Stop | 작업 완료 알림 (macOS/Linux/Windows) |

@@ -8,6 +8,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // 
 
 case "$FILE_PATH" in
   *.py)                          black "$FILE_PATH" 2>/dev/null || ruff format "$FILE_PATH" 2>/dev/null ;;
+  *.rs)                          rustfmt --edition 2021 "$FILE_PATH" 2>/dev/null ;;
   *.cpp|*.hpp|*.c|*.h|*.cc)     clang-format -i "$FILE_PATH" 2>/dev/null ;;
   *.ts|*.tsx|*.js|*.jsx|*.json)  prettier --write "$FILE_PATH" 2>/dev/null ;;
   *.css|*.scss)                  prettier --write "$FILE_PATH" 2>/dev/null ;;
