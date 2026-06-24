@@ -69,6 +69,25 @@ if [ -n "$CWD" ]; then
   fi
 fi
 
+# --- config 점검 staleness 넛지 (분기 백스톱) ---
+# /config-review가 갱신하는 마커 파일 기준. date 산술만, 네트워크/git 무호출.
+# 임계 미만이면 완전 침묵(over-nag 방지). 기본 90일 = 분기(커뮤니티 관행 기본값).
+
+CONFIG_NUDGE=""
+STAMP="$VAULT_DIR/.config-review-stamp"
+THRESH="${CLAUDE_CONFIG_REVIEW_DAYS:-90}"
+if [ "$THRESH" -gt 0 ] 2>/dev/null; then
+  if [ -f "$STAMP" ]; then
+    LAST=$(cat "$STAMP" 2>/dev/null)
+    if [ -n "$LAST" ] 2>/dev/null && [ "$LAST" -gt 0 ] 2>/dev/null; then
+      AGE_DAYS=$(( ( $(date +%s) - LAST ) / 86400 ))
+      if [ "$AGE_DAYS" -ge "$THRESH" ]; then
+        CONFIG_NUDGE="[Config] 마지막 설정 점검 ${AGE_DAYS}일 전 — /config-review 권장 (분기 백스톱)."
+      fi
+    fi
+  fi
+fi
+
 # --- 브리핑 조합 ---
 
 BRIEFING="[Vault Briefing]\n${STATS}"
@@ -76,6 +95,7 @@ BRIEFING="[Vault Briefing]\n${STATS}"
 [ -n "$PROJECT_CTX" ] && BRIEFING="${BRIEFING}\n${PROJECT_CTX}"
 [ -n "$TODOS" ] && BRIEFING="${BRIEFING}\n${TODOS}"
 [ -n "$LESSONS" ] && BRIEFING="${BRIEFING}\n${LESSONS}"
+[ -n "$CONFIG_NUDGE" ] && BRIEFING="${BRIEFING}\n${CONFIG_NUDGE}"
 
 BRIEFING="${BRIEFING}\n/vault-search [keyword]로 vault 검색 가능. /vault-recall [keyword]로 세션 복원 가능."
 

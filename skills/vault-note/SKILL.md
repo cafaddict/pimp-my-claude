@@ -40,6 +40,7 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 
 **decisions/**:
 - frontmatter: `date`, `tags:[decision,adr,<관련태그>]`, `project`, `status:accepted`, `summary:<1문장 요약>`
+- 기존 결정을 번복하는 경우: 옛 결정을 **삭제하지 말고** `status: superseded` + `superseded_by: [[NNNN-새결정]]`로 표시 (검색이 강등/제외 → 경량 forgetting)
 - 구조:
   ```
   # ADR: <제목>
@@ -59,7 +60,8 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 - 파일명: `decisions/NNNN-<kebab-case-제목>.md` (NNNN = 기존 파일 수 + 1)
 
 **lessons/**:
-- frontmatter: `date`, `tags:[lesson,<관련태그>]`, `project`, `summary:<1문장 요약>`, `confidence: high|medium|low`, `keywords:[<검색용 키워드 3-5개>]`
+- frontmatter: `date`, `tags:[lesson,<관련태그>]`, `project`, `summary:<1문장 요약>`, `confidence: high|medium|low`, `importance: high|medium|low`, `keywords:[<검색용 키워드 3-5개>]`
+- `importance`: 재사용 가치(자주 참조될 critical 교훈 = high). `confidence`와 독립 — 드물지만 critical한 교훈을 구분(검색/브리핑 우선순위 가중용).
 - 구조:
   ```
   # 교훈: <요약>
@@ -76,17 +78,18 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 - 파일명: `lessons/YYYY-MM-DD-<kebab-case-요약>.md`
 
 **resources/**:
-- frontmatter: `date`, `tags:[resource,<관련태그>]`, `summary:<1문장 요약>`, `project:<관련 프로젝트>`, `topics:[<주제 키워드>]`
+- frontmatter: `date`, `tags:[resource,<관련태그>]`, `summary:<1문장 요약>`, `project:<관련 프로젝트>`, `topics:[<주제 키워드>]`, `importance: high|medium|low`
 - 구조: `# <제목>` → `## 핵심 요약` → 내용 → `## 관련`
 - `## 관련` 필수: 관련 프로젝트, 세션, area를 wikilink로 연결
 - 파일명: `resources/<kebab-case-제목>.md`
 
-**areas/<영역명>/**:
+**areas/<영역명>/** (entity/concept 레이어):
 - 영역 폴더 없으면 생성. living doc (누적 업데이트).
-- frontmatter: `date`, `tags:[area,<영역태그>]`, `summary:<1문장 요약>`
-- 구조: `# <제목>` → 내용 → `## 관련`
+- frontmatter: `date`, `tags:[area,<영역태그>]`, `summary:<1문장 요약>`, `importance`, (distill로 합성 시 `sources`, `last_distilled`, `confidence`)
+- 구조: `# <제목>` → 내용 → `## 관련`. 사실 주장에 `(출처: [[event]])` 권장.
 - 파일명: `areas/<영역명>/<kebab-case-제목>.md`
 - **area vs resource**: 앞으로 지식 누적 → area, 작성 시점 완결 → resource
+- 여러 session/lesson에서 한 개념을 **합성·압축**하려면 단발 기록 대신 `/vault-distill`을 사용하라(출처 추적·머지 처리).
 
 **projects/<name>/**:
 - 폴더 없으면 생성 + CLAUDE.md 포함.

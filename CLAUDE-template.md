@@ -36,6 +36,11 @@
 - 실수 발생 시 이 파일에 즉시 교훈 추가 (living document)
 - ~/.claude/ 의 hook/skill을 수정할 때는 {{REPO_DIR}}/ 레포에도 반영 + README.md 업데이트
 
+## 설정 유지보수 (Config Maintenance)
+- 설정도 코드처럼 다뤄라 — bloat된 CLAUDE.md는 Claude가 규칙을 무시하게 만든다. "이 줄을 지우면 실수하게 되나?" 아니면 cut.
+- **이벤트 기반(1차)**: 피처 종료/버그 발생 시 규칙을 리뷰. 반복 규칙 → `/vault-promote`(rule) 또는 hook 승격. 가끔 쓰는 것 → skill로.
+- **분기 백스톱(2차)**: 세션 시작 넛지가 뜨면 `/config-review`로 stale·중복·끊긴 참조를 정리.
+
 ## Vault (Second Brain)
 작업 중 중요한 결정, 발견, 교훈이 있으면 **자동으로 vault에 기록하라** (`/vault-note` 스킬 사용).
 사용자가 요청하지 않아도 프로액티브하게 기록. vault 경로: ~/Documents/vault/

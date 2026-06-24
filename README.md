@@ -29,7 +29,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 
 ## 포함된 기능
 
-### Skills (20개, vault-* 8개 + 개발 12개)
+### Skills (22개, vault-* 9개 + 개발 13개)
 
 #### 단일 세션 스킬
 | 스킬 | 설명 | 자동 호출 |
@@ -39,6 +39,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/perf` | 성능 분석 (프로파일링 → 병목 → 최적화 → 벤치마크) | 가능 |
 | `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 | 사용자만 |
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
+| `/config-review` | harness(CLAUDE.md/rules/skills/hooks/agents) staleness·bloat·중복 감사 → prune/dedup/reroute (vault-promote의 역방향) | 가능 |
 | `/vault-note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
 | `/vault-recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/vault-search [키워드]` | vault 전체 검색 (decisions/lessons/areas/resources/projects) | 사용자만 |
@@ -46,6 +47,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/vault-daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
 | `/vault-add-project [언어...]` | 프로젝트 초기화 — `.claude/rules/` + vault 프로젝트 폴더 생성 | 사용자만 |
 | `/vault-promote` | lessons/에서 반복 교훈 탐지 → `.claude/rules/` 승격 제안 | 사용자만 |
+| `/vault-distill [개념]` | event 노트(sessions/lessons/decisions) → `areas/` entity 페이지로 압축·합성 (지식 복리, 출처 추적) | 가능 |
 | `/guide` | 설치된 기능 전체 가이드 | 사용자만 |
 
 #### 팀/멀티에이전트 스킬
@@ -76,7 +78,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 
 | 훅 | 이벤트 | 설명 |
 |----|--------|------|
-| vault-briefing | SessionStart | 세션 시작 시 vault 브리핑 (통계, TODO, 최근 교훈, 프로젝트 컨텍스트) |
+| vault-briefing | SessionStart | 세션 시작 시 vault 브리핑 (통계, TODO, 최근 교훈, 프로젝트 컨텍스트) + config 점검 staleness 넛지 (분기 백스톱) |
 | prompt-hint | UserPromptSubmit | 짧고 모호한 프롬프트에 Task/Context/Req/Output 구조 힌트 주입 |
 | block-dangerous | PreToolUse (Bash, `if` 1차 필터) | rm -rf, git push --force, DROP TABLE 등 차단 |
 | protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
@@ -117,7 +119,9 @@ vault/
 vault 경로: `$CLAUDE_VAULT_DIR` (기본: `~/Documents/vault`).
 `--with-vault` 설치 시 쉘 rc에 자동 등록.
 
-**노트 품질 보장**: enriched frontmatter (summary, topics, keywords, confidence), 링크 무결성 검증 (Glob 확인 + 양방향 링크 + 고아 방지), 내용 깊이 요구 (인사이트, 대안 비교, 적용 방법). 시간은 KST 기준.
+**노트 품질 보장**: enriched frontmatter (summary, topics, keywords, confidence, importance), 링크 무결성 검증 (Glob 확인 + 양방향 링크 + 고아 방지), 내용 깊이 요구 (인사이트, 대안 비교, 적용 방법). 시간은 KST 기준.
+
+**두 레이어 (event + entity)**: `sessions/lessons/decisions`(시간순·불변 event 로그)는 긴 세션의 context pollution을 막고, `areas/`(개념순·가변 entity 페이지)는 `/vault-distill`로 event를 압축해 지식을 복리시킨다 (Karpathy LLM Wiki 패턴, 단 하이브리드 RAG 유지). **Memory hygiene**: `importance` 가중 검색, decision `superseded_by` 강등(경량 forgetting), `/vault-daily` reflection(episodic→semantic 합성).
 
 ### MCP 시맨틱 검색 (--with-mcp)
 
@@ -162,7 +166,7 @@ MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니�
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
 ├── hooks/ (8개)              hook 스크립트
 ├── bin/ (1개)                statusline 등 상주 스크립트
-├── skills/ (20개)            skill 정의
+├── skills/ (22개)            skill 정의
 ├── agents/ (8개)             custom agent 정의
 ├── mcp/                      자체 MCP 시맨틱 검색 서버 (fastembed + sqlite-vec)
 ├── rules-templates/ (5개)    vault-notes (전역), cpp, python, rust, testing

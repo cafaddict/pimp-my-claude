@@ -25,6 +25,8 @@ $ARGUMENTS를 키워드로 vault의 sessions/ 디렉토리에서 관련 노트�
 1. vault MCP 서버가 연결되어 있으면 `mcp__vault__search` 사용 (mode: "keyword". `mcp__vault__stats`에서 semantic_search_available이 true이면 "hybrid")
 2. MCP가 없으면 `sessions/` 디렉토리를 Grep으로 키워드 검색
 
+여러 세션이 매칭되면 `recency × relevance`로 가중해 가장 관련 깊은 것부터 제시한다(세션은 importance 필드가 없으므로 최신성·일치도 중심). 개념 지식이 필요하면 `areas/`의 entity 페이지(`/vault-search`)도 함께 참고하라.
+
 ### 2. 관련 세션에서 추출
 
 발견된 세션 노트에서 다음을 추출:

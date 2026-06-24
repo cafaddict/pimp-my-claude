@@ -3,6 +3,7 @@ date: {{date}}
 tags: [decision, adr]
 project:
 status: proposed
+superseded_by:
 summary:
 ---
 

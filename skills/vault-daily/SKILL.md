@@ -33,6 +33,16 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 - 결정사항
 - 남은 TODO
 
+#### 2-1. Reflection (episodic → semantic 합성)
+
+오늘 세션을 넘어 **최근 며칠치 sessions/lessons를 훑어 반복 패턴·상위 통찰**을 찾아라. 개별 기록(episodic)을 추상화된 지식(semantic)으로 끌어올리는 단계다.
+
+- 같은 주제/실수/패턴이 여러 번 등장하는가? → 새 `lessons/` 초안 또는 `/vault-promote`(rule 승격) 후보로 **제안**.
+- 한 개념이 여러 세션에 흩어져 있는가? → `/vault-distill`(entity 페이지 합성) 후보로 **제안**.
+- 제안만 한다. **자동 write 금지** — 사용자 승인 후 실행 (틀린 통찰의 고착 방지).
+
+발견한 후보를 daily note의 `## 오늘의 인사이트` 또는 별도 "제안" 메모로 1-3줄 제시.
+
 #### 3. 기존 daily note 확인
 
 `$VAULT_DIR/daily-notes/YYYY-MM-DD.md`가 이미 있으면:

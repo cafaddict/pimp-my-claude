@@ -35,19 +35,57 @@ vault/
 | project | 선택 | 필수 | 선택 | 선택 | - | - |
 | topics | 필수 | - | - | 필수 | - | - |
 | status | - | 필수 | - | - | - | 필수 |
+| superseded_by | - | 조건부 | - | - | - | - |
 | keywords | - | - | 필수 | - | - | - |
 | confidence | - | - | 필수 | - | - | - |
+| importance | - | - | 선택 | 선택 | - | - |
 | cwd | 필수 | - | - | - | - | - |
 
 - status 값: `proposed | accepted | deprecated | superseded`
-- confidence 값: `high | medium | low`
+- **superseded_by**: status=superseded일 때 `[[NNNN-후속결정]]`. 검색은 superseded를 강등/제외한다 (경량 forgetting).
+- confidence 값: `high | medium | low` (사실의 확실성)
+- importance 값: `high | medium | low` (재사용 가치 — 검색/브리핑 우선순위에 가중)
+- **area 타입**은 위 표 외에 `sources`(출처 event 목록), `last_distilled`(YYYY-MM-DD), `importance`를 갖는다. 아래 Areas 섹션 참고.
 
 ### 내용 깊이
 - **Session**: "무엇을 했다" + "왜/무엇을 배웠다" 반드시 병기. `## 핵심 인사이트` 필수.
 - **Decision**: 최소 2개 대안 비교 테이블 + `## 트레이드오프` 필수.
 - **Lesson**: `## 적용 방법` 필수 (다음에 같은 상황이면?).
 - **Resource**: `## 핵심 요약` + `## 관련` 필수.
+- **Area(entity)**: 모든 사실 주장에 `(출처: [[event]])` 필수. 모순은 `## 미해결/모순`에.
 - Obsidian callout (`> [!tip]`, `> [!warning]`)으로 핵심 강조.
+
+## Areas — Entity/Concept 레이어
+
+vault는 두 레이어로 나뉜다:
+- **event 로그** (sessions/lessons/decisions) — 시간순·불변. "언제 무슨 일이 있었나." 긴 세션의 context pollution을 막는 1차 기록.
+- **entity 페이지** (`areas/<도메인>/<개념>.md`) — 개념순·가변(living). "X가 무엇인가 (현재 최선의 이해)." event를 **삭제하지 않고 참조**하며, 지식을 작성 시점에 한 번 압축해 복리시킨다.
+
+`/vault-distill`이 event → entity로 합성·갱신한다.
+
+| 타입 | 시간축 | 단위 | 예시 |
+|------|--------|------|------|
+| **area (entity)** | 지속·갱신 | 개념/도메인 | `areas/harness-engineering/feedback-loop.md` |
+| lesson | 일회성 | 특정 상황/실수 | `lessons/2026-06-24-link-validation.md` |
+| resource | 작성시점 완결 | 외부 참고 | `resources/obsidian-plugin-guide.md` |
+| decision | 일회성 선택 | 특정 결정(ADR) | `decisions/0003-embedding-provider.md` |
+
+### Area frontmatter
+```yaml
+date: <최초 작성일>
+tags: [area, <도메인태그>]
+summary: <1문장 — 이 개념이 무엇인가>
+importance: low | medium | high
+confidence: low | medium | high
+sources: [[YYYY-MM-DD-...]], [[NNNN-...]]   # 합성 출처 event
+last_distilled: YYYY-MM-DD
+```
+
+### Area 규칙
+- 한 페이지 = 한 개념. 파일명 `areas/<도메인>/<개념>.md` (kebab-case).
+- **출처 추적성 필수**: 모든 사실 주장에 `(출처: [[event]])` — 환각이 ground-truth로 굳는 것 방지.
+- 모순은 지우지 말고 `## 미해결/모순`에 명시.
+- area ↔ project 양방향 링크 (`projects/<name>.md`의 `## 지식`에 역링크).
 
 ### 파일명 규칙
 | 타입 | 형식 | 예시 |

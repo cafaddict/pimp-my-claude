@@ -54,7 +54,13 @@ keyword가 빈 문자열이고 --type만 지정된 경우 → 해당 디렉토�
 
 --project 필터가 있으면: 검색 결과 중 프론트매터에 `project: <name>`이 포함된 것만 남긴다.
 
-결과를 날짜 기준 최신순 정렬, --recent N개로 제한.
+**결과 정렬 (memory scoring)**: 단순 최신순이 아니라 `importance × recency × relevance`로 가중한다.
+- `relevance`: 검색 매칭 점수(MCP score 또는 키워드 일치도)
+- `recency`: 최신일수록 가중 (오래될수록 지수적으로 감쇠)
+- `importance`: 프론트매터 `importance`(high=1.0, medium=0.6, low=0.3, 없으면 medium 취급)
+- **superseded 강등**: `status: superseded`인 decision은 결과 맨 아래로 강등하거나(맥락상 필요 없으면) 제외하고, `superseded_by` 후속 노트를 대신 안내.
+
+정렬 후 --recent N개로 제한.
 
 ### 4. 결과 요약 표시
 
