@@ -52,6 +52,11 @@ effort: low
 | 함의 | 뜻하는 바 |
 | 전무하다 | 하나도 없다 |
 | 여실히 | 분명히 |
+| 미비 | 부족 |
+| 제반 | 여러 |
+| 방증 | 뒷받침하는 증거 |
+| 상회 | 넘음 |
+| 하회 | 밑돎 |
 
 ---
 
@@ -168,6 +173,19 @@ head-of-line blocking, cold start, thrashing, spill, fan-out, idempotent, eventu
 
 ---
 
+## 기계 검사 (선택)
+
+문서·README 등 **파일로 쓴 산문**은 검사기로 훑을 수 있다. 위 표를 런타임에 파싱하므로
+표를 고치면 검사기도 따라온다.
+
+```bash
+python {{REPO_DIR}}/skills/plain-words/scripts/check.py docs/*.md
+python {{REPO_DIR}}/skills/plain-words/scripts/check.py --list   # 규칙 확인
+```
+
+코드 블록·인라인 코드·인용·표는 건너뛴다. 지적이 있으면 종료 코드 1.
+검사기는 A/B 표에 있는 단어만 잡는다 — 표에 없는 어려운 단어는 위 테스트로 직접 판단한다.
+
 ## 건드리지 않는 것
 
 - 코드, 식별자, API·함수·플래그 이름, CLI 명령, 에러 문자열 — **원문 그대로**.
@@ -180,3 +198,6 @@ head-of-line blocking, cold start, thrashing, spill, fan-out, idempotent, eventu
 - 단어를 바꿔서 뜻이 조금이라도 달라지면 바꾸지 않는다. 대신 원어 + 한 줄 설명.
 - 유아어·구어체로 흐르지 않는다. 목표는 "쉬운 말"이 아니라 **실무자가 실제로 쓰는 말**이다.
 - 문장을 길게 늘려 쉬운 척하지 않는다. 짧고 구체적인 문장이 쉽다.
+
+<!-- plain-words: ignore-file -->
+

@@ -74,7 +74,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 
 축은 한국어 vs 영어가 아니다. `idle`은 영어라도 쉽고(매일 말한다) `유휴`는 한국어라도
 어렵다(논문에만 있다). 기준 한 줄: **"이 분야 사람이 회의에서 이 단어를 말하는가?"**
-영어에도 동일 적용 (utilize→use, "it should be noted that"→삭제, 단 `backpressure`는 유지).
+영어에도 동일 적용 (utilize→use, "it should be noted that"→삭제, 단 `backpressure`는 유지). <!-- plain-words: ignore -->
 
 스킬은 온디맨드라 "항상 이렇게 써라"를 보장하지 못하므로 계층을 나눴다 —
 요약은 전역 rule(항상 로드), 전체 대조표는 스킬(`/plain-words`), 매 턴 강제는 훅(기본 켜짐).
@@ -83,6 +83,9 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 ```bash
 touch ~/.claude/.plain-words-off   # 상시 훅 끄기 (코딩 위주 세션)
 rm ~/.claude/.plain-words-off      # 다시 켜기
+
+# 파일로 쓴 산문 기계 검사 (SKILL.md의 대조표를 런타임 파싱, 규칙 84개)
+python skills/plain-words/scripts/check.py docs/*.md
 ```
 
 ### Agents (8개)
@@ -104,7 +107,7 @@ rm ~/.claude/.plain-words-off      # 다시 켜기
 |----|--------|------|
 | vault-briefing | SessionStart | 세션 시작 시 vault 브리핑 (통계, TODO, 최근 교훈, 프로젝트 컨텍스트) + config 점검 staleness 넛지 (분기 백스톱) |
 | prompt-hint | UserPromptSubmit | 짧고 모호한 프롬프트에 Task/Context/Req/Output 구조 힌트 주입 |
-| plain-words-remind | UserPromptSubmit | 매 턴 단어 선택 규칙 재주입 (드리프트·compaction 방어). **기본 켜짐**, 프롬프트당 ~90 토큰 — `touch ~/.claude/.plain-words-off` 로 끄기 |
+| plain-words-remind | UserPromptSubmit | 매 턴 단어 선택 규칙 재주입 (드리프트·compaction 방어). **기본 켜짐**, 프롬프트당 176자(대략 100~150 토큰) — `touch ~/.claude/.plain-words-off` 로 끄기 |
 | block-dangerous | PreToolUse (Bash, `if` 1차 필터) | rm -rf, git push --force, DROP TABLE 등 차단 |
 | protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
 | auto-format | PostToolUse (Write/Edit) | black, rustfmt, clang-format, prettier 자동 적용 |
