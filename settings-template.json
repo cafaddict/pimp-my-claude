@@ -34,6 +34,11 @@
             "type": "command",
             "command": "~/.claude/hooks/prompt-hint.sh",
             "timeout": 1000
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/plain-words-remind.sh",
+            "timeout": 1000
           }
         ]
       }

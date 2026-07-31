@@ -29,7 +29,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 
 ## 포함된 기능
 
-### Skills (22개, vault-* 9개 + 개발 13개)
+### Skills (23개, vault-* 8개 + 개발 15개)
 
 #### 단일 세션 스킬
 | 스킬 | 설명 | 자동 호출 |
@@ -38,6 +38,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/review [PR]` | 코드 리뷰 (정확성/보안/성능/테스트 4관점) | 가능 |
 | `/perf` | 성능 분석 (프로파일링 → 병목 → 최적화 → 벤치마크) | 가능 |
 | `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 | 사용자만 |
+| `/plain-words` | 쉬운 단어로 쓰기 — 논문식 한자어(유휴/축출/이질적)·영어 격식어(utilize/facilitate)는 풀고, 정착된 기술 용어(queue/TTFT/threshold)는 억지 번역 금지 | 가능 |
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
 | `/config-review` | harness(CLAUDE.md/rules/skills/hooks/agents) staleness·bloat·중복 감사 → prune/dedup/reroute (vault-promote의 역방향) | 가능 |
 | `/vault-note` | vault에 결정/교훈/패턴 자동 기록 | ✅ 항상 자동 |
@@ -61,6 +62,32 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/sdd [요구사항]` | Subagent Loop | Spec-Driven Development (스펙→구현↔검증 피드백 루프, `--reverse`로 코드→스펙 역추출) |
 | `/harness [설명]` | Subagent Loop | Harness 컴포넌트 개발 (스펙→구현↔테스트→배포) |
 
+#### plain-words — 3계층 (스킬 + 전역 rule + 상시 훅)
+
+"쉽게 써줘"에 대한 Claude의 **두 가지** 실패를 동시에 막는다. 실패 모드가 두 개이고
+처방이 반대라는 게 핵심이다.
+
+| | 증상 | 예 | 처방 |
+|---|---|---|------|
+| A | 논문식 한자 학술어 | 유휴, 축출, 이질적, 열화, 강건성 | 풀어 쓰기 / 영어 (idle, evict) |
+| B | 정착된 용어를 창작 번역 (**더 나쁨**) | 줄 밀림 비용, 대기줄, 기준값, 딱지 | 원어 유지 (큐잉 지연, threshold) |
+
+축은 한국어 vs 영어가 아니다. `idle`은 영어라도 쉽고(매일 말한다) `유휴`는 한국어라도
+어렵다(논문에만 있다). 기준 한 줄: **"이 분야 사람이 회의에서 이 단어를 말하는가?"**
+영어에도 동일 적용 (utilize→use, "it should be noted that"→삭제, 단 `backpressure`는 유지). <!-- plain-words: ignore -->
+
+스킬은 온디맨드라 "항상 이렇게 써라"를 보장하지 못하므로 계층을 나눴다 —
+요약은 전역 rule(항상 로드), 전체 대조표는 스킬(`/plain-words`), 매 턴 강제는 훅(기본 켜짐).
+근거와 한계: [`skills/plain-words/README.md`](skills/plain-words/README.md)
+
+```bash
+touch ~/.claude/.plain-words-off   # 상시 훅 끄기 (코딩 위주 세션)
+rm ~/.claude/.plain-words-off      # 다시 켜기
+
+# 파일로 쓴 산문 기계 검사 (SKILL.md의 대조표를 런타임 파싱, 규칙 84개)
+python skills/plain-words/scripts/check.py docs/*.md
+```
+
 ### Agents (8개)
 
 | 에이전트 | 역할 | 모델 | 격리 |
@@ -74,12 +101,13 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `spec-verifier` | 스펙 대비 검증 전문가 (skeptical 튜닝) | inherit | - |
 | `harness-tester` | harness 컴포넌트 검증 (hook/skill/agent/setting) | sonnet-4-6 | - |
 
-### Hooks (8개)
+### Hooks (9개)
 
 | 훅 | 이벤트 | 설명 |
 |----|--------|------|
 | vault-briefing | SessionStart | 세션 시작 시 vault 브리핑 (통계, TODO, 최근 교훈, 프로젝트 컨텍스트) + config 점검 staleness 넛지 (분기 백스톱) |
 | prompt-hint | UserPromptSubmit | 짧고 모호한 프롬프트에 Task/Context/Req/Output 구조 힌트 주입 |
+| plain-words-remind | UserPromptSubmit | 매 턴 단어 선택 규칙 재주입 (드리프트·compaction 방어). **기본 켜짐**, 프롬프트당 176자(대략 100~150 토큰) — `touch ~/.claude/.plain-words-off` 로 끄기 |
 | block-dangerous | PreToolUse (Bash, `if` 1차 필터) | rm -rf, git push --force, DROP TABLE 등 차단 |
 | protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
 | auto-format | PostToolUse (Write/Edit) | black, rustfmt, clang-format, prettier 자동 적용 |
@@ -154,6 +182,7 @@ MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니�
 | 템플릿 | 적용 대상 | 배포 |
 |--------|----------|------|
 | vault-notes.md | **/vault/**/*.md | **전역** (`~/.claude/rules/`, setup.sh) |
+| plain-words.md | 모든 세션 (glob 없음 → 항상 로드) | **전역** (`~/.claude/rules/`, setup.sh) |
 | cpp.md | *.cpp, *.hpp, *.h, *.cc | 프로젝트별 (init-project.sh) |
 | python.md | *.py | 프로젝트별 (init-project.sh) |
 | rust.md | *.rs | 프로젝트별 (init-project.sh) |
@@ -164,12 +193,12 @@ MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니�
 ```
 ├── setup.sh                  원클릭 설치
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
-├── hooks/ (8개)              hook 스크립트
+├── hooks/ (9개)              hook 스크립트
 ├── bin/ (1개)                statusline 등 상주 스크립트
-├── skills/ (22개)            skill 정의
+├── skills/ (23개)            skill 정의
 ├── agents/ (8개)             custom agent 정의
 ├── mcp/                      자체 MCP 시맨틱 검색 서버 (fastembed + sqlite-vec)
-├── rules-templates/ (5개)    vault-notes (전역), cpp, python, rust, testing
+├── rules-templates/ (6개)    vault-notes·plain-words (전역), cpp, python, rust, testing
 ├── vault-template/           vault 디렉토리 구조 + 템플릿
 ├── agent-tools/              Agent SDK Python 프로젝트
 ├── settings-template.json    hooks/env 설정

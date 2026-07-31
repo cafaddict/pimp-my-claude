@@ -68,10 +68,16 @@ if [ -d "$SCRIPT_DIR/agents/" ] && ls "$SCRIPT_DIR/agents/"*.md &>/dev/null; the
   echo "✓ Agents 설치 ($(ls "$SCRIPT_DIR/agents/"*.md | wc -l | tr -d ' ')개)"
 fi
 
-# 3-2. global rules 복사 (vault-notes 등)
-if ls "$SCRIPT_DIR/rules-templates/vault-notes.md" &>/dev/null; then
-  cp "$SCRIPT_DIR/rules-templates/vault-notes.md" "$CLAUDE_DIR/rules/"
-  echo "✓ Global rules 설치 (vault-notes)"
+# 3-2. global rules 복사 (vault-notes, plain-words)
+GLOBAL_RULES=""
+for r in vault-notes plain-words; do
+  if [ -f "$SCRIPT_DIR/rules-templates/$r.md" ]; then
+    cp "$SCRIPT_DIR/rules-templates/$r.md" "$CLAUDE_DIR/rules/"
+    GLOBAL_RULES="$GLOBAL_RULES $r"
+  fi
+done
+if [ -n "$GLOBAL_RULES" ]; then
+  echo "✓ Global rules 설치 ($(echo $GLOBAL_RULES | sed 's/^ //; s/ /, /g'))"
 fi
 
 # 4. settings.json 병합
