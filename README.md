@@ -1,7 +1,8 @@
 # pimp-my-claude
 
-Claude Code 환경을 한 번에 구성하는 도구 모음.
-Hooks, Skills, Agents, Vault(Second Brain), MCP 시맨틱 검색, Agent SDK 도구를 포함.
+Claude Code 환경을 한 번에 구성하는 도구 모음. Codex CLI용 핵심 skills, 전역 `AGENTS.md`,
+vault MCP, 선택형 hooks도 함께 제공한다. Hooks, Skills, Agents, Vault(Second Brain), MCP
+시맨틱 검색, Agent SDK 도구를 포함.
 
 ## 빠른 시작
 
@@ -10,7 +11,29 @@ git clone https://github.com/cafaddict/pimp-my-claude.git
 cd pimp-my-claude
 ./setup.sh                # 기본 (hooks + skills + agents + settings)
 ./setup.sh --all          # 전부 설치 (vault + MCP + SDK)
+
+# Codex CLI (Claude 설정은 변경하지 않음)
+./setup-codex.sh
+./setup-codex.sh --all    # vault + semantic-search MCP + optional hooks
 ```
+
+## Codex CLI 지원
+
+`setup-codex.sh`는 Codex가 공식적으로 탐색하는 `~/.agents/skills/`에 다음 핵심 workflows를
+설치하고, 기존 `~/.codex/AGENTS.md`가 없을 때만 전역 작업 지침을 추가한다.
+
+| 범위 | 설치되는 기능 |
+|------|---------------|
+| Skills (11) | debugit, review, perf, prompt, plain-words, vault-note/save/recall/search/daily/distill |
+| `--with-mcp` | 동일 vault를 검색하는 `vault` stdio MCP (`PIMP_MY_VAULT_DIR` 우선) |
+| `--with-hooks` | vault briefing, prompt hint, plain-words reminder, 위험 Bash 차단, 완료 알림 |
+| `--with-vault` | 기존 Claude 설치와 공유 가능한 Obsidian vault 구조 |
+
+Codex에서 skill은 `$review`, `$vault-note`처럼 `$`로 명시 호출하거나, 요청 내용에 맞으면 자동으로
+선택된다. 설치 뒤 새 Codex 세션을 시작하고, hooks는 `/hooks`에서 내용을 검토한 뒤 신뢰하세요.
+
+Claude의 Agent Teams, Claude 전용 subagent 정의, `settings.json`은 Codex와 실행 모델이 달라
+자동 설치하지 않는다. 이들은 Codex-native multi-agent 구성으로 별도 포트할 대상이다.
 
 ## 설치 옵션
 

@@ -23,7 +23,10 @@ def _get_vault_dir() -> str:
     global _vault_dir
     if _vault_dir is None:
         _vault_dir = os.environ.get(
-            "CLAUDE_VAULT_DIR", os.path.expanduser("~/Documents/vault")
+            "PIMP_MY_VAULT_DIR",
+            os.environ.get(
+                "CLAUDE_VAULT_DIR", os.path.expanduser("~/Documents/vault")
+            ),
         )
     return _vault_dir
 

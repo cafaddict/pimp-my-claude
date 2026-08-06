@@ -21,7 +21,7 @@ TYPE_MAP = {
     "daily-notes": "daily",
 }
 
-SKIP_FILES = {".gitkeep", "CLAUDE.md"}
+SKIP_FILES = {".gitkeep", "CLAUDE.md", "AGENTS.md"}
 SKIP_DIRS = {"templates", ".cache", ".obsidian", ".trash", ".smart-env"}
 
 

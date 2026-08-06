@@ -1,0 +1,58 @@
+{
+  "description": "Optional pimp-my-codex lifecycle hooks. Review them with /hooks after installation.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{CODEX_INSTALL_DIR}}/hooks/vault-briefing.sh",
+            "timeout": 2,
+            "additionalContextLimit": 1200
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{CODEX_INSTALL_DIR}}/hooks/prompt-hint.sh",
+            "timeout": 1
+          },
+          {
+            "type": "command",
+            "command": "{{CODEX_INSTALL_DIR}}/hooks/plain-words-remind.sh",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{CODEX_INSTALL_DIR}}/hooks/block-dangerous.sh",
+            "timeout": 2,
+            "statusMessage": "Checking command safety"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{CODEX_INSTALL_DIR}}/hooks/notify-done.sh",
+            "timeout": 2
+          }
+        ]
+      }
+    ]
+  }
+}
