@@ -27,11 +27,11 @@ effort: medium
 ### Vault (Second Brain)
 | 디렉토리 | 용도 | 자동 기록 |
 |----------|------|----------|
-| sessions/ | 세션 기록 | vault-save 스킬 |
-| lessons/ | 교훈/삽질 기록 | ✅ vault-note 스킬 자동 |
-| decisions/ | 아키텍처 의사결정 | ✅ vault-note 스킬 자동 |
-| projects/ | 프로젝트별 지식 | ✅ vault-note 스킬 자동 / vault-add-project |
-| resources/ | 참고 자료 | ✅ vault-note 스킬 자동 |
+| sessions/ | 세션 기록 | vault-save 요청 시 |
+| lessons/ | 교훈/삽질 기록 | vault-note 요청·승인 시 |
+| decisions/ | 아키텍처 의사결정 | vault-note 요청·승인 시 |
+| projects/ | 프로젝트별 지식 | vault-note / vault-add-project 요청 시 |
+| resources/ | 참고 자료 | vault-note 요청·승인 시 |
 | areas/ | 지속 관리 영역 | 수동 |
 | daily-notes/ | 일일 노트 | 수동 |
 

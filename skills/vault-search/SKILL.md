@@ -2,26 +2,25 @@
 name: vault-search
 description: "vault 전체 검색 (decisions, lessons, areas, resources, projects). sessions는 /vault-recall 사용."
 argument-hint: "[keyword] [--type decision|lesson|resource|area|project] [--project name] [--recent N]"
-allowed-tools: Read, Grep, Glob, Bash, mcp__vault__search, mcp__vault__stats
+allowed-tools: Read, Grep, Glob, Bash, mcp__vault__search
 effort: high
 ---
 
 ## Vault 검색 프로토콜
 
-VAULT_DIR: `$CLAUDE_VAULT_DIR` (미설정 시 `~/Documents/vault`)
+VAULT_DIR: `$PIMP_MY_VAULT_DIR` 또는 `$CLAUDE_VAULT_DIR` (미설정 시 `~/Documents/vault`)
 
 vault가 없으면 사용자에게 `setup.sh --with-vault`로 생성하라고 안내하고 종료.
 
 **주의**: sessions/는 검색하지 않는다. 세션 복원은 `/vault-recall` 사용.
 
-### 0. vault 동기화
+### 0. 자동 동기화
 
-검색 전에 vault를 최신 상태로 맞춘다. unstaged 변경이 있으면 `git pull --rebase`가 실패하므로 stash 처리 필수:
+검색 전에 최신 vault를 가져온다.
 ```bash
-cd $VAULT_DIR && git stash && git pull --rebase && git stash pop
+{{REPO_DIR}}/bin/vault-sync.sh --pull
 ```
-- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
-- **sync 실패 시 원인을 파악하고 해결한 뒤 다음 단계로 진행하라. 실패를 무시하고 넘어가지 마라.**
+sync 충돌·실패는 무시하지 말고 중단해 사용자에게 알린다.
 
 ### 1. 인수 파싱
 
@@ -47,20 +46,15 @@ cd $VAULT_DIR && git stash && git pull --rebase && git stash pop
 ### 3. 검색 실행
 
 우선순위:
-1. vault MCP 서버가 연결되어 있으면 → `mcp__vault__search` 사용 (mode: "keyword". `mcp__vault__stats`에서 semantic_search_available이 true이면 "hybrid". folder로 대상 디렉토리 스코프)
+1. vault MCP 서버가 연결되어 있으면 → `mcp__vault__search(query, top_k, type_filter, project_filter)` 사용. `--type`은 `type_filter`, `--project`는 `project_filter`로 전달한다.
 2. MCP 없으면 → Grep으로 keyword 검색 (대상 디렉토리 내 `*.md` 파일)
 
 keyword가 빈 문자열이고 --type만 지정된 경우 → 해당 디렉토리의 파일 목록을 Glob으로 조회 (브라우징 모드)
 
 --project 필터가 있으면: 검색 결과 중 프론트매터에 `project: <name>`이 포함된 것만 남긴다.
 
-**결과 정렬 (memory scoring)**: 단순 최신순이 아니라 `importance × recency × relevance`로 가중한다.
-- `relevance`: 검색 매칭 점수(MCP score 또는 키워드 일치도)
-- `recency`: 최신일수록 가중 (오래될수록 지수적으로 감쇠)
-- `importance`: 프론트매터 `importance`(high=1.0, medium=0.6, low=0.3, 없으면 medium 취급)
-- **superseded 강등**: `status: superseded`인 decision은 결과 맨 아래로 강등하거나(맥락상 필요 없으면) 제외하고, `superseded_by` 후속 노트를 대신 안내.
-
-정렬 후 --recent N개로 제한.
+MCP 결과는 hybrid RRF relevance 순서를 사용한다. Grep fallback은 일치도와 최신성을 함께 고려해
+`--recent N`개를 제시한다. `importance`와 `status`는 현재 MCP 순위에 반영하지 않는다.
 
 ### 4. 결과 요약 표시
 

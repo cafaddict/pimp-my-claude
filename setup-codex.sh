@@ -22,7 +22,7 @@ Usage: ./setup-codex.sh [options]
 Options:
   --with-vault       Create or update the shared knowledge vault
   --with-mcp         Install the local vault semantic-search MCP server
-  --with-hooks       Install optional Codex lifecycle hooks (review with /hooks)
+  --with-hooks       Install optional writing, safety, and completion hooks (review with /hooks)
   --all              Enable vault, MCP, and hooks
   --force-agents     Replace ~/.codex/AGENTS.md after making a .bak copy
   -h, --help         Show this help
@@ -48,6 +48,9 @@ done
 
 echo "=== Codex setup ==="
 mkdir -p "$CODEX_DIR" "$SKILLS_DIR"
+mkdir -p "$INSTALL_DIR/bin"
+cp "$SCRIPT_DIR/bin/vault-sync.sh" "$INSTALL_DIR/bin/vault-sync.sh"
+chmod +x "$INSTALL_DIR/bin/vault-sync.sh"
 
 # Codex uses standard SKILL.md metadata. These workflows do not depend on
 # Claude-only agents, slash-command argument substitution, or Claude settings.
@@ -71,11 +74,15 @@ for skill in "${CODEX_SKILLS[@]}"; do
     frontmatter && NR > 1 && $0 == "---" { frontmatter = 0 }
   ' "$src/SKILL.md" \
     | sed \
+      -e "s|{{REPO_DIR}}|$INSTALL_DIR|g" \
+      -e "s|$INSTALL_DIR/skills/plain-words|$SKILLS_DIR/plain-words|g" \
+      -e 's|/bin/vault-sync|__PIMP_MY_VAULT_SYNC__|g' \
       -e 's/\$ARGUMENTS/the user\x27s supplied arguments/g' \
       -e 's/CLAUDE_VAULT_DIR/PIMP_MY_VAULT_DIR/g' \
       -e 's#/vault-#\$vault-#g' \
       -e 's#/plain-words#\$plain-words#g' \
       -e 's#/review#\$review#g' \
+      -e 's|__PIMP_MY_VAULT_SYNC__|/bin/vault-sync|g' \
       -e 's#- 변경사항: !`.*#- 변경사항: PR 번호가 있으면 `gh pr diff <번호>`로, 없으면 `git diff`로 확인한다.#' \
       -e 's#- PR 설명: !`.*#- PR 번호가 있으면 `gh pr view <번호>`로 의도와 설명을 확인한다.#' \
     > "$dest/SKILL.md"
@@ -104,16 +111,24 @@ if [ "$INSTALL_VAULT" = true ]; then
     cp -R "$SCRIPT_DIR/vault-template/." "$VAULT_DIR/"
     git -C "$VAULT_DIR" init --quiet
     git -C "$VAULT_DIR" add -A
-    git -C "$VAULT_DIR" commit -m "Initial vault structure" --quiet || true
-    echo "✓ Vault created: $VAULT_DIR"
+    if ! git -C "$VAULT_DIR" commit -m "Initial vault structure" --quiet; then
+      echo "✗ Initial vault commit failed — configure git user.name/user.email, then run setup again." >&2
+      exit 1
+    fi
+    echo "✓ Vault created and initial commit recorded: $VAULT_DIR"
   fi
 fi
 
 if [ "$INSTALL_MCP" = true ]; then
   if ! command -v python3 >/dev/null; then
     echo "✗ python3 is required for the vault MCP server" >&2
+  elif ! command -v codex >/dev/null; then
+    echo "✗ codex CLI is required to register the vault MCP server" >&2
   else
-    MCP_DIR="$SCRIPT_DIR/mcp"
+    MCP_DIR="$INSTALL_DIR/mcp"
+    mkdir -p "$MCP_DIR"
+    cp "$SCRIPT_DIR/mcp/requirements.txt" "$SCRIPT_DIR/mcp/server.py" \
+      "$SCRIPT_DIR/mcp/db.py" "$SCRIPT_DIR/mcp/indexer.py" "$SCRIPT_DIR/mcp/searcher.py" "$MCP_DIR/"
     VENV_DIR="$MCP_DIR/.venv"
     [ -d "$VENV_DIR" ] || python3 -m venv "$VENV_DIR"
     "$VENV_DIR/bin/pip" install -q -r "$MCP_DIR/requirements.txt"
@@ -129,7 +144,7 @@ if [ "$INSTALL_HOOKS" = true ]; then
     echo "⚠ jq is required to merge hooks; install it and re-run --with-hooks" >&2
   else
     mkdir -p "$INSTALL_DIR/hooks"
-    for hook in vault-briefing prompt-hint plain-words-remind block-dangerous notify-done; do
+    for hook in plain-words-remind block-dangerous notify-done; do
       sed \
         -e 's/CLAUDE_VAULT_DIR/PIMP_MY_VAULT_DIR/g' \
         -e 's/CLAUDE_CONFIG_REVIEW_DAYS/PIMP_MY_CONFIG_REVIEW_DAYS/g' \
@@ -143,18 +158,29 @@ if [ "$INSTALL_HOOKS" = true ]; then
     merged_hooks="$(mktemp "$CODEX_DIR/hooks-merged.XXXXXX")"
     sed "s|{{CODEX_INSTALL_DIR}}|$INSTALL_DIR|g" "$SCRIPT_DIR/codex/hooks.json" > "$rendered_hooks"
     if [ -f "$CODEX_DIR/hooks.json" ]; then
-      jq -s '.[0] * {hooks: ((.[0].hooks // {}) * (.[1].hooks // {}))}' \
+      cp "$CODEX_DIR/hooks.json" "$CODEX_DIR/hooks.json.bak"
+      jq -s '
+        .[0] as $existing | .[1] as $template |
+        ($existing * $template)
+        | .hooks = (
+            ($template.hooks // {}) as $template_hooks |
+            reduce (($existing.hooks // {}) | keys_unsorted[]) as $event
+              ($template_hooks;
+                .[$event] = ((($existing.hooks[$event] // []) + (.[$event] // [])) | unique_by(tojson))
+              )
+          )
+      ' \
         "$CODEX_DIR/hooks.json" "$rendered_hooks" > "$merged_hooks"
     else
       cp "$rendered_hooks" "$merged_hooks"
     fi
     mv "$merged_hooks" "$CODEX_DIR/hooks.json"
     rm -f "$rendered_hooks"
-    echo "✓ Optional hooks merged — review and trust them with /hooks"
+    echo "✓ Optional hooks merged without replacing existing handlers — review and trust them with /hooks"
   fi
 fi
 
 echo
 echo "=== Codex setup complete ==="
-echo 'Start a new Codex session, then use $guide or mention a workflow with $skill-name.'
+echo 'Start a new Codex session, then use a workflow such as $review or $vault-search.'
 echo "For a shared vault outside the default path, export PIMP_MY_VAULT_DIR before starting Codex."

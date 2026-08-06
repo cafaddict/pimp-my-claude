@@ -2,27 +2,28 @@
 name: vault-recall
 description: "이전 세션 컨텍스트 복원. 새 세션 시작 시 사용. vault에서 시맨틱 검색."
 argument-hint: "[검색 키워드]"
-allowed-tools: Read, Grep, Glob, Bash, mcp__vault__search, mcp__vault__stats
+allowed-tools: Read, Grep, Glob, Bash, mcp__vault__search
 effort: high
 ---
 
 ## 컨텍스트 복원 프로토콜
 
-### 0. vault 동기화
+VAULT_DIR은 `$PIMP_MY_VAULT_DIR` 또는 `$CLAUDE_VAULT_DIR`, 없으면 `~/Documents/vault`이다.
 
-검색 전에 vault를 최신 상태로 맞춘다. unstaged 변경이 있으면 `git pull --rebase`가 실패하므로 stash 처리 필수:
+### 0. 자동 동기화
+
+컨텍스트를 복원하기 전에 최신 vault를 가져온다.
 ```bash
-cd $VAULT_DIR && git stash && git pull --rebase && git stash pop
+{{REPO_DIR}}/bin/vault-sync.sh --pull
 ```
-- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
-- **sync 실패 시 원인을 파악하고 해결한 뒤 다음 단계로 진행하라. 실패를 무시하고 넘어가지 마라.**
+sync 충돌·실패는 무시하지 말고 중단해 사용자에게 알린다.
 
 ### 1. vault에서 관련 세션 검색
 
 $ARGUMENTS를 키워드로 vault의 sessions/ 디렉토리에서 관련 노트를 검색하라.
 
 검색 방법 (우선순위):
-1. vault MCP 서버가 연결되어 있으면 `mcp__vault__search` 사용 (mode: "keyword". `mcp__vault__stats`에서 semantic_search_available이 true이면 "hybrid")
+1. vault MCP 서버가 연결되어 있으면 `mcp__vault__search(query, type_filter: "session")` 사용
 2. MCP가 없으면 `sessions/` 디렉토리를 Grep으로 키워드 검색
 
 여러 세션이 매칭되면 `recency × relevance`로 가중해 가장 관련 깊은 것부터 제시한다(세션은 importance 필드가 없으므로 최신성·일치도 중심). 개념 지식이 필요하면 `areas/`의 entity 페이지(`/vault-search`)도 함께 참고하라.

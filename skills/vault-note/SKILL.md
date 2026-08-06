@@ -1,19 +1,19 @@
 ---
 name: vault-note
 description: |
-  vault에 노트 자동 기록. 아래 상황에서 프로액티브하게 사용하라:
+  vault에 재사용할 노트를 기록. 아래 상황에서 기록을 제안하고, 사용자가 요청하거나 승인했을 때 사용하라:
   - 아키텍처 결정을 내렸을 때 → decisions/
   - 새로운 패턴이나 접근법을 발견했을 때 → resources/
   - 프로젝트 관련 중요한 맥락이 생겼을 때 → projects/<프로젝트>/
   - 디버깅에서 의미있는 교훈을 얻었을 때 → lessons/
   - 실수나 삽질에서 배운 것이 있을 때 → lessons/
   - 지속적으로 지식을 쌓아가는 관심 영역 → areas/<영역명>/
-  사용자가 직접 호출하지 않아도 자동으로 사용하라.
+  중요하지만 기록 필요성이 불확실하면 먼저 한 줄로 제안한다.
 allowed-tools: Read, Write, Bash, Glob
 effort: medium
 ---
 
-## Vault 노트 자동 기록
+## Vault 노트 기록
 
 VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버라이드 가능).
 
@@ -26,7 +26,7 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 | **decision** | `decisions/` | 아키텍처/기술 선택을 결정했을 때 |
 | **lesson** | `lessons/` | 실수, 삽질, 디버깅에서 배운 교훈 |
 | **resource** | `resources/` | 유용한 패턴, 스니펫, 참고 자료 |
-| **project** | `projects/<name>/` | 프로젝트 관련 맥락 기록 |
+| **project** | `projects/<name>.md` | 프로젝트 관련 맥락 기록 |
 | **area** | `areas/<영역명>/` | 지속적으로 지식을 쌓아가는 관심 영역 |
 
 ### 공통 wikilink 규칙
@@ -40,7 +40,7 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 
 **decisions/**:
 - frontmatter: `date`, `tags:[decision,adr,<관련태그>]`, `project`, `status:accepted`, `summary:<1문장 요약>`
-- 기존 결정을 번복하는 경우: 옛 결정을 **삭제하지 말고** `status: superseded` + `superseded_by: [[NNNN-새결정]]`로 표시 (검색이 강등/제외 → 경량 forgetting)
+- 기존 결정을 번복하는 경우: 옛 결정을 **삭제하지 말고** `status: superseded` + `superseded_by: [[NNNN-새결정]]`로 표시한다.
 - 구조:
   ```
   # ADR: <제목>
@@ -61,7 +61,7 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 
 **lessons/**:
 - frontmatter: `date`, `tags:[lesson,<관련태그>]`, `project`, `summary:<1문장 요약>`, `confidence: high|medium|low`, `importance: high|medium|low`, `keywords:[<검색용 키워드 3-5개>]`
-- `importance`: 재사용 가치(자주 참조될 critical 교훈 = high). `confidence`와 독립 — 드물지만 critical한 교훈을 구분(검색/브리핑 우선순위 가중용).
+- `importance`: 재사용 가치(자주 참조될 critical 교훈 = high). `confidence`와 독립적으로 기록한다.
 - 구조:
   ```
   # 교훈: <요약>
@@ -91,18 +91,18 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 - **area vs resource**: 앞으로 지식 누적 → area, 작성 시점 완결 → resource
 - 여러 session/lesson에서 한 개념을 **합성·압축**하려면 단발 기록 대신 `/vault-distill`을 사용하라(출처 추적·머지 처리).
 
-**projects/<name>/**:
-- 폴더 없으면 생성 + CLAUDE.md 포함.
+**projects/<name>.md**:
+- 노트가 없으면 생성한다.
 - 프로젝트 ↔ area/resource 연결: 관련 노트 생성 시 `projects/<name>.md`의 해당 섹션에 wikilink 추가 (역방향도).
 
-### git sync
+### 자동 동기화
 
-노트 작성 후 반드시 실행:
+노트를 만든 뒤 생성·갱신한 정확한 파일 경로를 `NOTE_PATH`에 두고 아래를 실행한다.
 ```bash
-cd $VAULT_DIR && git stash && git pull --rebase && git stash pop && git add decisions/ lessons/ resources/ areas/ projects/ && git commit -m "note: <타입> - <제목>" && git push
+{{REPO_DIR}}/bin/vault-sync.sh --commit "note: <타입> - <제목>" -- "$NOTE_PATH"
 ```
-- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
-- **sync 실패 시 원인을 파악하고 해결한 뒤 진행하라. 실패를 무시하고 넘어가지 마라.**
+이 스크립트는 기존 변경을 stash로 보호한 뒤 pull/rebase, 해당 노트만 commit, push를 수행한다.
+충돌·sync 실패는 절대 무시하지 말고 즉시 중단해 사용자에게 상태를 알린다.
 
 ### 주의
 - 사소한 내용은 기록하지 마라. **나중에 다시 찾을 가치가 있는 것만** 기록.

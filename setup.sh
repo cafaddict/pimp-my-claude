@@ -9,7 +9,7 @@ INSTALL_SDK=false
 INSTALL_VAULT=false
 INSTALL_MCP=false
 FORCE_CLAUDE_MD=false
-VAULT_DIR="${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}"
+VAULT_DIR="${PIMP_MY_VAULT_DIR:-${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -30,7 +30,8 @@ for arg in "$@"; do
       echo "  --help             이 도움말 표시"
       echo ""
       echo "환경변수:"
-      echo "  CLAUDE_VAULT_DIR  vault 경로 (기본: ~/Documents/vault)"
+      echo "  PIMP_MY_VAULT_DIR vault 경로 (최우선, 기본: ~/Documents/vault)"
+      echo "  CLAUDE_VAULT_DIR  Claude 호환 vault 경로"
       exit 0
       ;;
   esac
@@ -45,7 +46,7 @@ mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_
 # 2. hooks 복사 + 실행 권한
 cp "$SCRIPT_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/"
 chmod +x "$CLAUDE_DIR/hooks/"*.sh
-echo "✓ Hooks 설치 ($(ls "$SCRIPT_DIR/hooks/"*.sh | wc -l | tr -d ' ')개)"
+echo "✓ Hooks 설치 ($(ls "$SCRIPT_DIR/hooks/"*.sh | wc -l | tr -d ' ')개, 기본 활성화 3개)"
 
 # 2-1. bin 스크립트 복사 (statusline 등)
 if [ -d "$SCRIPT_DIR/bin/" ] && ls "$SCRIPT_DIR/bin/"*.sh &>/dev/null; then
@@ -83,10 +84,34 @@ fi
 # 4. settings.json 병합
 if [ -f "$CLAUDE_DIR/settings.json" ]; then
   if command -v jq &>/dev/null; then
-    jq -s '.[0] * .[1]' "$CLAUDE_DIR/settings.json" "$SCRIPT_DIR/settings-template.json" \
+    jq -s '
+      .[0] as $existing | .[1] as $template |
+      ($existing * $template)
+      | .permissions.additionalDirectories = (
+          (($existing.permissions.additionalDirectories // [])
+          + ($template.permissions.additionalDirectories // [])) | unique
+        )
+      | .hooks = (
+          ($template.hooks // {}) as $template_hooks |
+          reduce (($existing.hooks // {}) | keys_unsorted[]) as $event
+            ($template_hooks;
+              .[$event] = ((($existing.hooks[$event] // []) + (.[$event] // [])) | unique_by(tojson))
+            )
+        )
+    ' "$CLAUDE_DIR/settings.json" "$SCRIPT_DIR/settings-template.json" \
       > "$CLAUDE_DIR/settings.json.tmp" \
       && mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
-    echo "✓ settings.json 병합 (기존 설정 보존)"
+    echo "✓ settings.json 병합 (기존 배열·hook 보존)"
+    if jq -e '[
+      .hooks.UserPromptSubmit[]?.hooks[]?.command // "",
+      .hooks.SessionStart[]?.hooks[]?.command // "",
+      .hooks.PostToolUse[]?.hooks[]?.command // "",
+      .hooks.PreCompact[]?.hooks[]?.command // "",
+      .hooks.SubagentStop[]?.hooks[]?.command // ""
+    ] | any(test("prompt-hint|vault-briefing|auto-format|pre-compact-save|subagent-stop-log"))' \
+      "$CLAUDE_DIR/settings.json" >/dev/null; then
+      echo "⚠ 기존 선택형 context/automation hook은 보존되었습니다. 필요 없으면 settings.json에서 직접 제거하세요."
+    fi
   else
     echo "⚠ jq 미설치 — settings.json 병합 건너뜀"
     echo "  수동: $SCRIPT_DIR/settings-template.json 참고"
@@ -139,8 +164,13 @@ if [ "$INSTALL_VAULT" = true ]; then
     mkdir -p "$VAULT_DIR"
     cp -r "$SCRIPT_DIR/vault-template/"* "$VAULT_DIR/"
     cp "$SCRIPT_DIR/vault-template/.gitignore" "$VAULT_DIR/"
-    cd "$VAULT_DIR" && git init && git add -A && git commit -m "Initial vault structure" --quiet
-    echo "✓ Vault 생성: $VAULT_DIR"
+    git -C "$VAULT_DIR" init --quiet
+    git -C "$VAULT_DIR" add -A
+    if ! git -C "$VAULT_DIR" commit -m "Initial vault structure" --quiet; then
+      echo "✗ Vault 초기 commit 실패 — git user.name/user.email을 설정한 뒤 다시 실행하세요." >&2
+      exit 1
+    fi
+    echo "✓ Vault 생성 및 초기 commit: $VAULT_DIR"
   fi
 
   # CLAUDE_VAULT_DIR을 쉘 rc에 등록 (기본값과 다를 때만)

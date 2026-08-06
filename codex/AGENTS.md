@@ -4,7 +4,7 @@
 
 - Prefer small, focused changes. Do not refactor unrelated code.
 - Before declaring work complete, run the relevant tests, build, or static checks and report the result.
-- Do not commit, push, or change remote state unless the user asks.
+- Do not commit, push, or change remote state unless the user asks. The installed vault skills are the exception: after an approved vault write, run their scoped automatic sync, which commits and pushes only the vault files that changed.
 - For changes that span several files or have non-obvious dependencies, state a short plan before editing.
 - Update the project documentation when a user-visible feature, API, or configuration changes.
 

@@ -7,7 +7,7 @@ effort: high
 
 ## Daily Note 생성/업데이트
 
-VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버라이드 가능).
+VAULT_DIR은 `~/Documents/vault` (환경변수 `PIMP_MY_VAULT_DIR` 또는 `CLAUDE_VAULT_DIR`으로 오버라이드 가능).
 
 ### 프로세스
 
@@ -37,7 +37,7 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 
 오늘 세션을 넘어 **최근 며칠치 sessions/lessons를 훑어 반복 패턴·상위 통찰**을 찾아라. 개별 기록(episodic)을 추상화된 지식(semantic)으로 끌어올리는 단계다.
 
-- 같은 주제/실수/패턴이 여러 번 등장하는가? → 새 `lessons/` 초안 또는 `/vault-promote`(rule 승격) 후보로 **제안**.
+- 같은 주제/실수/패턴이 여러 번 등장하는가? → 새 `lessons/` 초안 또는 프로젝트 지침 승격 후보로 **제안**.
 - 한 개념이 여러 세션에 흩어져 있는가? → `/vault-distill`(entity 페이지 합성) 후보로 **제안**.
 - 제안만 한다. **자동 write 금지** — 사용자 승인 후 실행 (틀린 통찰의 고착 방지).
 
@@ -107,14 +107,15 @@ SORT date ASC
 daily note 생성 후, 오늘의 각 세션 노트(`sessions/YYYY-MM-DD-*.md`)의 `## 관련` 섹션에 daily note wikilink(`[[YYYY-MM-DD]]`)를 추가하라.
 이미 daily wikilink가 있으면 중복 추가하지 마라.
 
-#### 6. git sync (통합 commit)
+#### 6. 자동 동기화
 
-save-session이 stage만 해둔 변경사항을 포함하여 한번에 commit+push:
+생성·갱신한 session, daily, decision, lesson의 정확한 파일 경로를 모두 넘겨 자동 동기화한다.
 ```bash
-cd $VAULT_DIR && git stash && git pull --rebase && git stash pop && git add sessions/ daily-notes/ decisions/ lessons/ && git commit -m "daily: YYYY-MM-DD" && git push
+SYNC_PATHS=("$SESSION_PATH" "$DAILY_PATH")
+[ -n "${NOTE_PATH:-}" ] && SYNC_PATHS+=("$NOTE_PATH")
+{{REPO_DIR}}/bin/vault-sync.sh --commit "daily: YYYY-MM-DD" -- "${SYNC_PATHS[@]}"
 ```
-- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
-- **sync 실패 시 원인을 파악하고 해결한 뒤 진행하라. 실패를 무시하고 넘어가지 마라.**
+충돌·sync 실패는 무시하지 말고 즉시 중단해 사용자에게 알린다.
 
 #### 7. 사용자에게 확인
 

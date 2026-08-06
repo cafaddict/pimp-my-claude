@@ -9,7 +9,7 @@ effort: medium
 
 ## 세션 저장
 
-VAULT_DIR: 환경변수 `$CLAUDE_VAULT_DIR` 또는 `~/Documents/vault/` (경로 없으면 사용자에게 질문).
+VAULT_DIR: 환경변수 `$PIMP_MY_VAULT_DIR` 또는 `$CLAUDE_VAULT_DIR`, 없으면 `~/Documents/vault/` (경로 없으면 사용자에게 질문).
 
 ### 저장 프로세스
 
@@ -62,16 +62,17 @@ topics: [<2-5개 주제 키워드>]
 
 5. **결정사항 → decisions/ 자동 분리**:
    세션의 `## 결정사항`에 기록된 항목 중 아키텍처/기술 선택에 해당하는 것이 있으면,
-   /vault-note 스킬로 vault `decisions/`에 ADR 형식으로 자동 기록하라.
+   `/vault-note` 스킬로 vault `decisions/`에 ADR 형식 기록을 제안하라. 사용자가 승인할 때만 기록한다.
    - 이미 동일/유사한 decision이 vault에 있으면 skip (중복 방지)
    - 사소한 결정 (파일명 변경 등)은 기록하지 마라 — 재사용 가치 있는 것만
 
-6. git sync:
+6. 저장 후 생성·갱신한 정확한 경로를 `SESSION_PATH`(및 새 decision 경로)에 두고 자동 동기화한다.
 ```bash
-cd <vault> && git stash && git pull --rebase && git stash pop && git add sessions/ decisions/ projects/ && git commit -m "session: YYYY-MM-DD-HHMM-<topic>" && git push
+SYNC_PATHS=("$SESSION_PATH")
+[ -n "${DECISION_PATH:-}" ] && SYNC_PATHS+=("$DECISION_PATH")
+{{REPO_DIR}}/bin/vault-sync.sh --commit "session: YYYY-MM-DD-HHMM-<topic>" -- "${SYNC_PATHS[@]}"
 ```
-- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
-- **sync 실패 시 원인을 파악하고 해결한 뒤 진행하라. 실패를 무시하고 넘어가지 마라.**
+충돌·sync 실패는 무시하지 말고 즉시 중단해 사용자에게 알린다.
 
 ### 주의
 - 간결하되 인사이트는 빠뜨리지 마라. "뭘 했다"만은 부실.

@@ -5,7 +5,7 @@
 - Assume familiarity with advanced concepts: templates, metaprogramming, RAII, move semantics, smart pointers, Python decorators, generators, asyncio, type hints.
 - **However, always explain code so that a college sophomore could understand it.** Use plain language, break down complex logic step by step, and clarify *why* each design choice was made — even if the code itself is advanced.
 
-- C++/Python 코딩 스타일: 프로젝트 .claude/rules/ 또는 개인 스타일 가이드 참고
+- C++/Python 코딩 스타일: 프로젝트 지침 또는 개인 스타일 가이드 참고
 
 ## Code Style (General)
 - 자기 문서화 코드, 단일 책임 함수, 구성 > 상속, 서술적 이름
@@ -17,45 +17,29 @@
 - Requirements: 구체적 조건 (가정하지 말고 물어봐라)
 - Output: 코드? 설명? JSON?
 
-한 턴에 여러 모드를 섞지 마라:
-- Build: 코드 작성에만 집중
-- Learn: 개념 이해/설명
-- Critique: 코드 검토 → /review 사용
-- Debug: 에러 분석 → /debugit 사용
+요청이 모호하면 Task, Context, Requirements, Output을 확인하되, 안전하게 진행할 수 있으면 불필요한 질문 없이 시작한다.
 
 ## Workflow
-- 3개 이상 파일 수정 → Plan Mode 먼저
-- 복잡한 다단계 작업 → /taskloop 사용
-- 새 작업은 새 세션에서 — 컨텍스트 오염 방지
-- 컨텍스트 위생: 70%에서 정밀도 저하, 85%에서 환각 증가 → 70% 전에 /compact 선제 실행
-- 무거운 탐색은 서브에이전트(Explore)에 위임하여 메인 컨텍스트 보존
-- 병렬 작업이 필요하면 git worktrees 사용 (`claude --worktree <name>`)
+- 의존성·위험·검증 방법이 불명확한 다단계 작업은 먼저 짧은 계획을 제시한다.
+- 병렬화는 서로 독립적이고 읽기 중심인 작업에만 쓴다. 여러 에이전트에 같은 파일의 쓰기 권한을 주지 않는다.
+- 컨텍스트가 실제로 작업 품질을 해칠 때만 요약/compact한다. 새 세션을 강제하지 않는다.
 - 테스트/컴파일로 변경 검증 후 완료 선언
-- 자동 커밋 금지. 최소 변경 원칙.
+- 일반 프로젝트의 자동 커밋 금지. 최소 변경 원칙. 단, 사용자가 요청·승인한 vault 기록은 해당 노트만 자동 commit/push로 동기화한다.
 - git commit 전에 변경 내용이 프로젝트 README에 반영되어야 하는지 확인하고, 필요하면 업데이트. 단순 버그 수정은 불필요, API/기능/설정 변경은 필요.
-- 실수 발생 시 이 파일에 즉시 교훈 추가 (living document)
+- 반복되는 교훈만 이 파일이나 프로젝트 지침에 반영한다.
 - ~/.claude/ 의 hook/skill을 수정할 때는 {{REPO_DIR}}/ 레포에도 반영 + README.md 업데이트
 
 ## 설정 유지보수 (Config Maintenance)
 - 설정도 코드처럼 다뤄라 — bloat된 CLAUDE.md는 Claude가 규칙을 무시하게 만든다. "이 줄을 지우면 실수하게 되나?" 아니면 cut.
-- **이벤트 기반(1차)**: 피처 종료/버그 발생 시 규칙을 리뷰. 반복 규칙 → `/vault-promote`(rule) 또는 hook 승격. 가끔 쓰는 것 → skill로.
-- **분기 백스톱(2차)**: 세션 시작 넛지가 뜨면 `/config-review`로 stale·중복·끊긴 참조를 정리.
+- 피처 종료나 반복되는 실패가 있을 때 규칙을 검토한다. 항상 필요한 결정적 규칙은 hook, 절차는 skill, 가끔 필요한 맥락은 문서에 둔다.
 
 ## Vault (Second Brain)
-작업 중 중요한 결정, 발견, 교훈이 있으면 **자동으로 vault에 기록하라** (`/vault-note` 스킬 사용).
-사용자가 요청하지 않아도 프로액티브하게 기록. vault 경로: ~/Documents/vault/
-- **결정을 내렸으면 반드시 /vault-note로 decisions/에 기록하라** — 기술 선택, 아키텍처 결정, 설계 방향 등
-- 실수/삽질에서 배운 것 → vault의 lessons/에 기록 (`/vault-note` 스킬)
-- 새 세션 시작 시 vault의 lessons/와 decisions/를 참고하여 같은 실수/재논의 방지
+재사용할 가치가 있는 결정·발견·교훈은 vault 기록을 **제안**한다. 사용자가 요청하거나 승인할 때만
+`/vault-note`로 기록한다. 기본 경로는 `~/Documents/vault/`이며, vault 작업은 자동으로 원격과 동기화한다. 충돌·실패는 무시하지 말고 즉시 보고한다.
+- 새 작업에서 관련 맥락이 필요하면 `/vault-recall` 또는 `/vault-search`를 명시적으로 사용한다.
 
 - Custom Skills: ~/.claude/skills/ 에 설치됨. /guide로 확인.
 
-## Tips
-- `&` 접두사: 원격 샌드박스에서 무거운 분석 오프로드
-- `/doctor`: 환경 문제 자동 진단
-- `/context`: 현재 컨텍스트 사용량 확인
-- `Ctrl+G`: 외부 에디터에서 긴 프롬프트 작성
+## Integrations
 
-## Plugins
-Context7(라이브러리 문서), GitHub, clangd(C++), Code Review, Code Simplifier, Commit Commands 활성화.
-주의: MCP 서버는 사용 안 해도 컨텍스트 8~30% 소비. 안 쓰는 서버는 비활성화.
+- 필요한 MCP 서버와 plugin만 활성화한다. 연결하지 않은 도구나 현재 작업과 무관한 자동화는 기본값으로 가정하지 않는다.

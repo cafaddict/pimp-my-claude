@@ -1,27 +1,9 @@
 {
   "description": "Optional pimp-my-codex lifecycle hooks. Review them with /hooks after installation.",
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume|compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "{{CODEX_INSTALL_DIR}}/hooks/vault-briefing.sh",
-            "timeout": 2,
-            "additionalContextLimit": 1200
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "{{CODEX_INSTALL_DIR}}/hooks/prompt-hint.sh",
-            "timeout": 1
-          },
           {
             "type": "command",
             "command": "{{CODEX_INSTALL_DIR}}/hooks/plain-words-remind.sh",

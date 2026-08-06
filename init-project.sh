@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(pwd)"
 PROJECT_NAME=$(basename "$PROJECT_DIR")
-VAULT_DIR="${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}"
+VAULT_DIR="${PIMP_MY_VAULT_DIR:-${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}}"
 
 echo "=== 프로젝트 초기화: $PROJECT_NAME ==="
 echo ""
@@ -32,37 +32,17 @@ if [ -f "$SCRIPT_DIR/rules-templates/testing.md" ]; then
   echo "✓ rules/testing.md 설치"
 fi
 
-# 2. vault에 프로젝트 폴더 생성
+# 2. vault에 프로젝트 노트 생성
 if [ -d "$VAULT_DIR" ]; then
-  VAULT_PROJECT="$VAULT_DIR/projects/$PROJECT_NAME"
-  if [ -d "$VAULT_PROJECT" ]; then
+  VAULT_PROJECT="$VAULT_DIR/projects/$PROJECT_NAME.md"
+  if [ -f "$VAULT_PROJECT" ]; then
     echo "✓ vault 프로젝트 이미 존재: $VAULT_PROJECT"
   else
-    mkdir -p "$VAULT_PROJECT"
-
-    # 프로젝트 CLAUDE.md 생성
-    cat > "$VAULT_PROJECT/CLAUDE.md" << EOF
-# 프로젝트: $PROJECT_NAME
-
-## 개요
-
-
-## 기술 스택
-
-
-## 레포 경로
-\`$PROJECT_DIR\`
-
-## 핵심 결정
-
-
-## 메모
-
-EOF
+    mkdir -p "$VAULT_DIR/projects"
 
     # 프로젝트 노트 생성
     REPO_URL=$(cd "$PROJECT_DIR" && git remote get-url origin 2>/dev/null || echo "")
-    cat > "$VAULT_PROJECT/$PROJECT_NAME.md" << EOF
+    cat > "$VAULT_PROJECT" << EOF
 ---
 date: $(date +%Y-%m-%d)
 tags: [project]
@@ -86,15 +66,8 @@ repo: $REPO_URL
 
 EOF
 
-    echo "✓ vault 프로젝트 생성: projects/$PROJECT_NAME/"
-
-    # vault git sync
-    if [ -d "$VAULT_DIR/.git" ]; then
-      cd "$VAULT_DIR"
-      git add "projects/$PROJECT_NAME/" 2>/dev/null
-      git commit -m "project: init $PROJECT_NAME" --quiet 2>/dev/null || true
-      git push --quiet 2>/dev/null &
-    fi
+    "$SCRIPT_DIR/bin/vault-sync.sh" --commit "project: init $PROJECT_NAME" -- "projects/$PROJECT_NAME.md"
+    echo "✓ vault 프로젝트 생성·동기화: projects/$PROJECT_NAME.md"
   fi
 else
   echo "⚠ vault 없음 ($VAULT_DIR) — vault 프로젝트 생성 건너뜀"
@@ -103,4 +76,4 @@ fi
 echo ""
 echo "=== 초기화 완료 ==="
 echo "  .claude/rules/: $(ls "$PROJECT_DIR/.claude/rules/" | tr '\n' ' ')"
-[ -d "$VAULT_PROJECT" ] && echo "  vault: projects/$PROJECT_NAME/"
+[ -f "$VAULT_PROJECT" ] && echo "  vault: projects/$PROJECT_NAME.md"

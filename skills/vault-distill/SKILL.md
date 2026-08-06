@@ -7,38 +7,30 @@ description: |
   - "X가 무엇인가"를 한 페이지로 정리해두고 싶을 때
   - 세션 종료 시 distill 후보를 발견했을 때 (프로액티브 제안)
 argument-hint: "[개념/도메인 키워드]"
-allowed-tools: Read, Write, Bash, Grep, Glob, mcp__vault__search, mcp__vault__stats
+allowed-tools: Read, Write, Bash, Grep, Glob, mcp__vault__search
 effort: high
 ---
 
 ## Vault Distill — event → entity 페이지 합성
 
-VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버라이드 가능).
+VAULT_DIR은 `~/Documents/vault` (환경변수 `PIMP_MY_VAULT_DIR` 또는 `CLAUDE_VAULT_DIR`으로 오버라이드 가능).
 
 event 로그(sessions/lessons/decisions, 시간순·불변)에서 "현재도 유효한 사실"만 뽑아 **개념당 1개 entity 페이지**(`areas/<도메인>/<개념>.md`, 가변·living)로 합성·갱신한다. RAG가 매번 chunk를 재조립하는 대신, 지식을 **작성 시점에 한 번 압축**해 복리시키는 것이 목적.
 
-> [!tip] `/vault-promote`와의 차이
-> `/vault-promote`는 lessons → `.claude/rules/`(강제되는 **행동 룰**). `/vault-distill`은 event → `areas/`(누적되는 **개념 지식**). 방향이 직교한다. 룰이 아니라 "X는 무엇인가"의 압축이면 distill.
-
-### 0. vault 동기화
-
-```bash
-cd $VAULT_DIR && git stash && git pull --rebase && git stash pop
-```
-- stash할 내용이 없으면 (clean) stash pop 생략.
-- **sync 실패 시 원인을 파악하고 해결한 뒤 진행하라. 실패를 무시하고 넘어가지 마라.**
+> [!tip] 지침 승격과의 차이
+> 반복된 lesson을 프로젝트 지침으로 승격하는 일은 행동 규칙을 만든다. `/vault-distill`은 event → `areas/`로 누적되는 **개념 지식**을 만든다. 룰이 아니라 "X는 무엇인가"의 압축이면 distill한다.
 
 ### 1. 대상 개념 결정
 
 `$ARGUMENTS`가 개념/도메인 키워드다. 비어 있으면:
-- 최근 sessions/lessons를 훑어 **3회 이상 반복 등장**하는 개념을 후보로 제시하고 사용자에게 무엇을 distill할지 물어라. (임계값은 `/vault-promote`와 동일한 3회+ 재사용)
+- 최근 sessions/lessons를 훑어 **3회 이상 반복 등장**하는 개념을 후보로 제시하고 사용자에게 무엇을 distill할지 물어라.
 
 도메인/개념을 정한다 → 목표 파일 경로 `areas/<도메인>/<개념>.md` (kebab-case).
 
 ### 2. 관련 event 수집
 
 키워드로 event 노트를 검색:
-1. vault MCP 서버가 있으면 `mcp__vault__search` (mode: "keyword", `mcp__vault__stats`에서 semantic_search_available이 true면 "hybrid"). folder로 sessions/lessons/decisions 스코프.
+1. vault MCP 서버가 있으면 `mcp__vault__search(query, type_filter)`를 session, lesson, decision마다 호출한다.
 2. MCP 없으면 sessions/·lessons/·decisions/를 Grep.
 
 각 event에서 그 개념에 대한 **사실·결정·교훈**을 추출. 출처 파일명을 반드시 기록한다(다음 단계 역링크용).
@@ -94,12 +86,15 @@ last_distilled: YYYY-MM-DD
 - entity ↔ 관련 프로젝트: `projects/<name>.md`의 `## 지식` 섹션에 이 entity wikilink 추가(역방향).
 - `## 관련`에 최소 1개 wikilink (고아 금지).
 
-### 7. git sync
+### 7. 자동 동기화
 
+생성·갱신한 entity와 프로젝트 노트의 정확한 경로를 넘겨 자동 동기화한다.
 ```bash
-cd $VAULT_DIR && git stash && git pull --rebase && git stash pop && git add areas/ projects/ && git commit -m "distill: <도메인>/<개념>" && git push
+SYNC_PATHS=("$ENTITY_PATH")
+[ -n "${PROJECT_NOTE_PATH:-}" ] && SYNC_PATHS+=("$PROJECT_NOTE_PATH")
+{{REPO_DIR}}/bin/vault-sync.sh --commit "distill: <도메인>/<개념>" -- "${SYNC_PATHS[@]}"
 ```
-- clean이면 stash pop 생략. **sync 실패 무시 금지.**
+충돌·sync 실패는 무시하지 말고 즉시 중단해 사용자에게 알린다.
 
 ### 8. 사용자에게 확인
 

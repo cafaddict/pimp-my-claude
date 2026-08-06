@@ -12,12 +12,12 @@ case "$(uname -s)" in
       zenity --notification --text="Claude 작업 완료" 2>/dev/null
     fi
     # 터미널 벨 (GUI 없는 환경용)
-    printf '\a'
+    printf '\a' >&2
     ;;
   MINGW*|MSYS*|CYGWIN*)
     if command -v powershell.exe &>/dev/null; then
       powershell.exe -Command "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show('Claude 작업 완료','Claude Code')" &>/dev/null &
     fi
-    printf '\a'
+    printf '\a' >&2
     ;;
 esac

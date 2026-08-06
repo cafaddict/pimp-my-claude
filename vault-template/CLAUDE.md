@@ -42,9 +42,9 @@ vault/
 | cwd | 필수 | - | - | - | - | - |
 
 - status 값: `proposed | accepted | deprecated | superseded`
-- **superseded_by**: status=superseded일 때 `[[NNNN-후속결정]]`. 검색은 superseded를 강등/제외한다 (경량 forgetting).
+- **superseded_by**: status=superseded일 때 `[[NNNN-후속결정]]`. 후속 결정을 추적하기 위한 관계다.
 - confidence 값: `high | medium | low` (사실의 확실성)
-- importance 값: `high | medium | low` (재사용 가치 — 검색/브리핑 우선순위에 가중)
+- importance 값: `high | medium | low` (재사용 가치)
 - **area 타입**은 위 표 외에 `sources`(출처 event 목록), `last_distilled`(YYYY-MM-DD), `importance`를 갖는다. 아래 Areas 섹션 참고.
 
 ### 내용 깊이
@@ -119,6 +119,7 @@ Obsidian 그래프 뷰를 위해 노트 간 `[[wikilink]]`로 연결한다.
 **주의**: Session에서 daily note를 직접 링크하지 마라 — daily가 session을 역링크한다.
 
 ## MCP
-이 vault는 markdown-vault-mcp를 통해 Claude Code에서 검색 가능.
-- 검색: keyword (기본), hybrid (embedding 활성화 시)
-- frontmatter 필터: tags, date, project, status, topics, confidence, keywords
+이 vault는 내장 MCP 서버를 통해 Claude Code와 Codex에서 검색할 수 있다.
+- 검색: BM25 + embedding hybrid RRF
+- 지원 필터: 문서 타입과 `project` frontmatter
+- `importance`, `status` 등 다른 frontmatter는 노트 품질·후속 검토용이며 현재 MCP 순위 필터는 아니다.

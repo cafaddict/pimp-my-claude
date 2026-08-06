@@ -8,9 +8,9 @@ effort: medium
 
 ## 프로젝트 초기화 프로토콜
 
-현재 작업 디렉토리를 Claude Code 프로젝트로 초기화하고, vault에 프로젝트 지식 폴더를 생성한다.
+현재 작업 디렉토리를 Claude Code 프로젝트로 초기화하고, vault에 프로젝트 노트를 생성한다.
 
-VAULT_DIR: `$CLAUDE_VAULT_DIR` (미설정 시 `~/Documents/vault`)
+VAULT_DIR: `$PIMP_MY_VAULT_DIR` 또는 `$CLAUDE_VAULT_DIR` (미설정 시 `~/Documents/vault`)
 PIMP_MY_CLAUDE_DIR: 아래 순서로 탐색:
 1. `{{REPO_DIR}}`
 2. `~/Documents/pimp-my-claude`
@@ -31,37 +31,14 @@ PIMP_MY_CLAUDE_DIR: 아래 순서로 탐색:
 - testing 룰: `rules-templates/testing.md` → `.claude/rules/testing.md` (항상 포함)
 - 템플릿이 없는 언어가 요청되면 경고 출력하고 건너뜀
 
-### 3. vault 프로젝트 폴더 생성
+### 3. vault 프로젝트 노트 생성
 
 프로젝트명 = 현재 디렉토리의 `basename`.
 
-`$VAULT_DIR/projects/<프로젝트명>/` 이 이미 존재하면:
+`$VAULT_DIR/projects/<프로젝트명>.md`가 이미 존재하면:
 - "vault 프로젝트 이미 존재" 안내 후 건너뜀
 
-존재하지 않으면 아래 2개 파일을 생성:
-
-#### 3-1. CLAUDE.md
-
-```markdown
-# 프로젝트: <프로젝트명>
-
-## 개요
-
-
-## 기술 스택
-
-
-## 레포 경로
-`<현재 디렉토리 절대 경로>`
-
-## 핵심 결정
-
-
-## 메모
-
-```
-
-#### 3-2. <프로젝트명>.md
+존재하지 않으면 `<프로젝트명>.md` 하나를 생성한다.
 
 vault-notes 규칙의 project frontmatter 스키마를 따른다:
 
@@ -97,19 +74,18 @@ repo: <git remote get-url origin, 없으면 빈 문자열>
 - CMakeLists.txt, pyproject.toml, package.json 등으로 기술 스택 추론
 - 디렉토리 구조 간략 요약
 
-### 5. vault git 커밋
+### 5. 자동 동기화
 
-vault가 git 레포이면:
+프로젝트 노트를 만든 뒤 자동 동기화한다.
 ```bash
-cd $VAULT_DIR && git stash && git pull --rebase && git stash pop && git add projects/<프로젝트명>/ && git commit -m "project: init <프로젝트명>" && git push
+{{REPO_DIR}}/bin/vault-sync.sh --commit "project: init <프로젝트명>" -- "projects/<프로젝트명>.md"
 ```
-- `git stash`에 stash할 내용이 없으면 (clean 상태) stash pop도 생략
-- **sync 실패 시 원인을 파악하고 해결한 뒤 진행하라. 실패를 무시하고 넘어가지 마라.**
+충돌·sync 실패는 무시하지 말고 즉시 중단해 사용자에게 알린다.
 
 ### 6. 결과 표시
 
 ```
 === 프로젝트 초기화 완료 ===
   .claude/rules/: cpp.md python.md testing.md
-  vault: projects/<프로젝트명>/
+  vault: projects/<프로젝트명>.md
 ```
