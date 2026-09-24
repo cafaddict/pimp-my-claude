@@ -104,6 +104,48 @@ markdown-vault-mcp로 vault에 시맨틱 검색 제공:
 - FastEmbed (ONNX, CPU-only) — API 키/GPU 불필요
 - 하이브리드 검색 (키워드 + 벡터 시맨틱)
 - headless Linux 서버에서도 동작 (Obsidian 불필요)
+- 백링크·고아 노트·연결 경로 등 그래프 탐색 도구 포함
+
+**전역(`--scope user`) 등록**이다. vault는 전역 자원이라 프로젝트 스코프로 등록하면
+다른 프로젝트에서 서버가 안 붙고, `/vault-search`와 `/recall`이 조용히 Grep 폴백으로
+떨어진다 — 고장이 드러나지 않으니 주의.
+
+4개 환경변수가 모두 필요하다. `EMBEDDING_PROVIDER`만 설정하면 fastembed를 깔고도
+시맨틱 검색이 **영구 비활성**된다:
+
+| 변수 | 역할 |
+|------|------|
+| `MARKDOWN_VAULT_MCP_SOURCE_DIR` | vault 경로 |
+| `EMBEDDING_PROVIDER` | `fastembed` |
+| `MARKDOWN_VAULT_MCP_EMBEDDINGS_PATH` | **없으면 시맨틱 검색 비활성** |
+| `MARKDOWN_VAULT_MCP_INDEX_PATH` | 없으면 매번 전체 재스캔 |
+
+임베딩은 서버 첫 기동 시 자동 생성된다 (노트 수에 따라 수 분).
+
+**메모리 주의.** FastEmbed는 `nomic-embed-text-v1.5`를 상주시킨다. RAM 8GB에서 여유가
+수십 MB인 머신에서는 임베딩 빌드가 트레이스백 없이 죽는다 — 그리고 `EMBEDDINGS_PATH`가
+설정돼 있으면 **매 세션 시작마다 그 빌드를 재시도한다.** 저사양·원격접속용 머신이라면
+`EMBEDDINGS_PATH`를 빼고 등록해 keyword 전용으로 쓰는 편이 낫다:
+
+```bash
+claude mcp add --scope user vault \
+  -e MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR \
+  -e MARKDOWN_VAULT_MCP_INDEX_PATH=$HOME/.local/share/markdown-vault-mcp/index.db \
+  -- $HOME/.local/share/markdown-vault-mcp/venv/bin/markdown-vault-mcp serve
+```
+
+keyword 전용이라도 백링크·고아 노트·연결 경로 등 그래프 도구는 전부 쓸 수 있다.
+
+**알려진 이슈 (업스트림 1.17.0)**
+- 쿼리가 FTS5 `MATCH`에 이스케이프 없이 들어가, `-`·`:`·`*` 등이 든 검색어가
+  `OperationalError`로 죽고 **빈 결과로 삼켜진다.** `/vault-search`와 `/recall`이
+  각 토큰을 큰따옴표로 감싸 우회한다 (`multi-ai` → `"multi-ai"`).
+- **4.x로 올리지 말 것.** `fastmcp` / `fastmcp-slim` 의존성 충돌로
+  `ModuleNotFoundError: No module named 'fastmcp.server.dependencies'`가 나며 기동 실패한다.
+  1.17.0 + `fastmcp<3` 조합으로 고정한다 (1.17.0은 `fastmcp`를 의존성에 선언하지 않으므로
+  명시 설치 필요).
+- frontmatter YAML이 깨진 노트는 **조용히 색인에서 빠진다.** 검색에서 영영 안 보이므로
+  `(N skipped)` 로그를 확인할 것.
 
 ### Agent SDK 도구 (--with-sdk)
 

@@ -144,20 +144,47 @@ if [ "$INSTALL_MCP" = true ]; then
     if [ ! -d "$MCP_VENV" ]; then
       python3 -m venv "$MCP_VENV"
     fi
-    "$MCP_VENV/bin/pip" install "markdown-vault-mcp[all]" --quiet
-    echo "✓ markdown-vault-mcp 설치 완료"
+    # 버전 고정: 4.x는 fastmcp / fastmcp-slim 의존성 충돌로 기동 실패한다
+    # (ModuleNotFoundError: No module named 'fastmcp.server.dependencies').
+    # 1.17.0은 fastmcp를 의존성에 선언하지 않으므로 fastmcp<3을 명시 설치한다.
+    "$MCP_VENV/bin/pip" install --quiet "markdown-vault-mcp[all]==1.17.0" "fastmcp<3"
+    echo "✓ markdown-vault-mcp 설치 완료 (1.17.0 고정)"
 
     # Claude Code MCP 등록
+    #
+    # --scope user 필수: 기본값 local은 setup.sh를 실행한 디렉토리에만 등록되어,
+    # 다른 프로젝트(심지어 vault 자신)에서는 서버가 안 붙는다. vault는 전역 자원이다.
+    #
+    # EMBEDDINGS_PATH 필수: 없으면 서버가 시맨틱 검색을 영구 비활성화한다
+    # ("Semantic search requires both 'embedding_provider' and 'embeddings_path'").
+    # EMBEDDING_PROVIDER만 설정하면 fastembed를 깔고도 keyword 검색만 된다.
+    #
+    # INDEX_PATH: 생략 시 매번 전체 재스캔. 명시하면 SQLite 인덱스를 재사용한다.
+    #
+    # 저사양 머신 주의: EMBEDDINGS_PATH가 설정돼 있으면 서버가 기동할 때마다
+    # 임베딩 빌드를 시도한다. RAM 8GB에서 여유가 수십 MB면 이 빌드가 트레이스백 없이
+    # 죽고, 매 세션마다 재시도한다. 그런 머신에서는 아래 -e EMBEDDINGS_PATH 줄을 빼서
+    # keyword 전용으로 등록하라 (그래프 탐색 도구는 그대로 쓸 수 있다).
+    MCP_HOME="$(dirname "$MCP_VENV")"
     if command -v claude &>/dev/null; then
-      claude mcp remove vault 2>/dev/null || true
-      claude mcp add vault \
+      claude mcp remove --scope user vault 2>/dev/null || true
+      claude mcp remove --scope local vault 2>/dev/null || true
+      claude mcp add --scope user vault \
         -e "MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR" \
         -e "EMBEDDING_PROVIDER=fastembed" \
+        -e "MARKDOWN_VAULT_MCP_EMBEDDINGS_PATH=$MCP_HOME/embeddings" \
+        -e "MARKDOWN_VAULT_MCP_INDEX_PATH=$MCP_HOME/index.db" \
         -- "$MCP_VENV/bin/markdown-vault-mcp" serve
-      echo "✓ Claude Code MCP 등록 완료"
+      echo "✓ Claude Code MCP 등록 완료 (전역 스코프)"
+      echo "  첫 세션 시작 시 임베딩이 자동 생성됩니다 (노트 수에 따라 수 분)."
     else
       echo "⚠ claude CLI 미설치 — MCP 수동 등록 필요:"
-      echo "  claude mcp add vault -e MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR -e EMBEDDING_PROVIDER=fastembed -- $MCP_VENV/bin/markdown-vault-mcp serve"
+      echo "  claude mcp add --scope user vault \\"
+      echo "    -e MARKDOWN_VAULT_MCP_SOURCE_DIR=$VAULT_DIR \\"
+      echo "    -e EMBEDDING_PROVIDER=fastembed \\"
+      echo "    -e MARKDOWN_VAULT_MCP_EMBEDDINGS_PATH=$MCP_HOME/embeddings \\"
+      echo "    -e MARKDOWN_VAULT_MCP_INDEX_PATH=$MCP_HOME/index.db \\"
+      echo "    -- $MCP_VENV/bin/markdown-vault-mcp serve"
     fi
   fi
 fi
