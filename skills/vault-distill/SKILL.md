@@ -88,7 +88,7 @@ last_distilled: YYYY-MM-DD
 
 ### 7. 자동 동기화
 
-생성·갱신한 entity와 프로젝트 노트의 정확한 경로를 넘겨 자동 동기화한다.
+사용자가 요청·승인한 distill이면, 생성·갱신한 entity와 프로젝트 노트의 정확한 경로를 넘겨 자동 동기화한다.
 ```bash
 SYNC_PATHS=("$ENTITY_PATH")
 [ -n "${PROJECT_NOTE_PATH:-}" ] && SYNC_PATHS+=("$PROJECT_NOTE_PATH")

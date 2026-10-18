@@ -1,8 +1,8 @@
 ---
 name: vault-save
 description: |
-  현재 세션을 vault에 저장. 세션 마무리 시 자동으로 사용하라.
-  Use when: 사용자가 "끝", "마무리", "세션 저장", "오늘 여기까지" 등을 말할 때.
+  현재 세션을 vault에 저장. 사용자가 세션 저장을 요청하거나 저장 제안을 승인했을 때 사용하라.
+  사용자가 "끝", "마무리", "오늘 여기까지" 등을 말하면 저장을 한 줄로 제안만 한다.
 allowed-tools: Read, Write, Bash, Glob
 effort: medium
 ---
@@ -66,7 +66,7 @@ topics: [<2-5개 주제 키워드>]
    - 이미 동일/유사한 decision이 vault에 있으면 skip (중복 방지)
    - 사소한 결정 (파일명 변경 등)은 기록하지 마라 — 재사용 가치 있는 것만
 
-6. 저장 후 생성·갱신한 정확한 경로를 `SESSION_PATH`(및 새 decision 경로)에 두고 자동 동기화한다.
+6. 사용자가 요청·승인한 저장이면, 저장 후 생성·갱신한 정확한 경로를 `SESSION_PATH`(및 새 decision 경로)에 두고 자동 동기화한다.
 ```bash
 SYNC_PATHS=("$SESSION_PATH")
 [ -n "${DECISION_PATH:-}" ] && SYNC_PATHS+=("$DECISION_PATH")

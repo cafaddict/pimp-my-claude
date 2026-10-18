@@ -33,7 +33,8 @@ Codex에서 skill은 `$review`, `$vault-note`처럼 `$`로 명시 호출하거�
 선택된다. 설치 뒤 새 Codex 세션을 시작하고, hooks는 `/hooks`에서 내용을 검토한 뒤 신뢰하세요.
 
 Claude의 Agent Teams, Claude 전용 subagent 정의, `settings.json`은 Codex와 실행 모델이 달라
-자동 설치하지 않는다. 이들은 Codex-native multi-agent 구성으로 별도 포트할 대상이다.
+자동 설치하지 않는다. 에이전트를 여러 개 사용하는 작업은 사용자가 요청한 방식으로 진행하며,
+전역 `AGENTS.md` 템플릿은 별도 multi-agent skill의 사용을 강제하지 않는다.
 
 기존 Claude 설치를 다시 실행할 때도 기존 hook 배열은 안전하게 보존한다. 예전에 설치한 vault
 briefing·자동 format·transcript hook은 자동으로 지우지 않으므로, 필요 없으면
@@ -71,8 +72,8 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/vault-note` | vault에 결정/교훈/패턴 기록 | 사용자 요청·승인 시 |
 | `/vault-recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/vault-search [키워드]` | vault 전체 검색 (decisions/lessons/areas/resources/projects) | 사용자만 |
-| `/vault-save` | 현재 세션 요약을 vault에 저장 | ✅ 세션 마무리 시 자동 |
-| `/vault-daily` | 하루 마무리 정리 (오늘 세션 종합 → daily note) | 사용자만 |
+| `/vault-save` | 현재 세션 요약을 vault에 저장 | 사용자 요청·승인 시 (마무리 시 제안) |
+| `/vault-daily` | 하루 정리 (오늘 세션 종합 → daily note, 직접 호출할 때만 기록·sync) | 사용자만 |
 | `/vault-add-project [언어...]` | 프로젝트 초기화 — `.claude/rules/` + vault 프로젝트 폴더 생성 | 사용자만 |
 | `/vault-promote` | lessons/에서 반복 교훈 탐지 → `.claude/rules/` 승격 제안 | 사용자만 |
 | `/vault-distill [개념]` | event 노트(sessions/lessons/decisions) → `areas/` entity 페이지로 압축·합성 (지식 복리, 출처 추적) | 가능 |
@@ -141,8 +142,13 @@ python skills/plain-words/scripts/check.py docs/*.md
 
 ### statusLine
 
-컨텍스트 위생 가시화 — 터미널 하단에 `<model> · ctx N% · vault Xd/Yl · <branch>` 상시 표시.
-`/compact` 선제 실행 타이밍 판단용. `~/.claude/bin/statusline.sh`에 설치.
+Starship 프롬프트 재현 — 터미널 하단에 powerline 세그먼트(user · directory · git branch/status · language · docker · time · model · ctx% · rate limits)를 Starship pastel-powerline 계열 고정 색상으로 표시.
+`~/.claude/bin/statusline.sh`에 설치. 끝의 model/ctx% 세그먼트는 `/compact` 선제 실행 타이밍 판단용.
+rate limits 세그먼트(`⏳ 5h NN%  7d NN%`)는 Claude.ai 구독 5시간 윈도우/주간 사용률 — 정보 없으면 자동 생략.
+글리프 표시에는 Nerd Font가 필요하다. 언어 세그먼트는 `Cargo.toml`·`package.json`·`go.mod` 같은 파일 존재만 보고
+`rustc`/`node`/`go`/`python3`를 실행하지 않는다(toolchain 자동 다운로드·작업 폴더가 고른 실행 파일 실행 방지).
+Claude Code는 workspace trust를 수락하기 전에는 statusLine을 실행하지 않는다.
+이전 한 줄 형식(`vault Xd/Yl` 포함)으로 되돌리려면 `git show b6a362d:bin/statusline.sh > ~/.claude/bin/statusline.sh`.
 
 ### AGENTS.md (업계 표준 호환)
 
@@ -168,6 +174,25 @@ vault 경로: `$PIMP_MY_VAULT_DIR` 우선, Claude에서는 `$CLAUDE_VAULT_DIR`�
 `--with-vault` 설치 시 쉘 rc에 자동 등록.
 
 **노트 품질 가이드**: enriched frontmatter (summary, topics, keywords, confidence, importance), 링크 무결성 검증 (Glob 확인 + 양방향 링크 + 고아 방지), 내용 깊이 요구 (인사이트, 대안 비교, 적용 방법). 시간은 KST 기준. vault 작업은 자동으로 원격과 동기화하며, 충돌은 무시하지 않고 중단·보고한다.
+
+**자동 동기화 범위 (`bin/vault-sync.sh`)**: 사용자가 요청·승인한 vault 기록에 대해서만 skill이 실행한다.
+
+- `--commit "<메시지>" -- <파일...>`는 나열한 vault 상대 경로 파일만 commit·push한다. 다른 staged/unstaged/untracked 변경은
+  stash로 잠시 보호했다가 staged 상태까지 그대로 되돌리며, commit에도 push에도 섞이지 않는다.
+- 절대 경로, `..`, `.git` 안 경로, 디렉터리, 없는 파일은 저장소를 건드리기 전에 거부한다. glob·pathspec magic은 글자 그대로 취급한다.
+- 다음 경우에는 아무것도 commit·push하지 않고 중단한다: 다른 sync 실행 중(`.git/pimp-vault-sync.lock`), merge/rebase 진행 중,
+  pull 실패, 로컬 변경 복원 충돌, 아직 push하지 않은 이전 로컬 commit이 있음(원격 브랜치가 아직 없을 때 기존 history 포함).
+  이전 commit은 직접 검토해 `git push -u origin <branch>`로 한 번 올린 뒤 다시 실행한다.
+
+복구 방법: 중단 메시지에 나온 stash(`git stash list`에서 `pimp-my-claude auto-sync`, SHA 함께 표시)는 지워지지 않는다. pull 실패라면
+pull 문제를 해결한 뒤 `git stash pop --index <stash>`로 되돌린다(`pop`은 복원에 성공했을 때만 stash를 지운다).
+복원 충돌이라면 아무것도 복원되지 않았을 수도 있고(stage한 파일이 받아 온 노트와 겹칠 때), 일부만 복원됐을 수도 있다
+(새로 만든 로컬 노트와 같은 경로의 파일을 원격에서 받아 왔을 때, 작업 트리에는 원격 버전만 남는다). 이때 stash가 유일한 사본일 수 있다.
+메시지에 나온 경로별 `git show '<SHA>:<경로>'`(작업 트리), `'<SHA>^2:<경로>'`(staged), `'<SHA>^3:<경로>'`(untracked)로 저장본을 확인하고,
+덮어쓰지 말고 `git show '<SHA>^3:<경로>' > '<경로>.local'`처럼 옆에 꺼내 직접 합친다. 전체 목록은
+`git stash show --include-untracked --name-status <SHA>`. **모든 변경을 되살리고 확인하기 전에는 그 stash를 drop/clear하지 않는다.**
+lock이 남았는데 실행 중인 sync가 없다면 `rmdir .git/pimp-vault-sync.lock`. 설치본(`~/.claude/bin/`,
+`~/.codex/pimp-my-codex/bin/`)은 `setup.sh`/`setup-codex.sh`를 다시 실행해야 이 동작으로 갱신된다.
 
 **두 레이어 (event + entity)**: `sessions/lessons/decisions`(시간순·불변 event 로그)는 긴 세션의 context pollution을 막고, `areas/`(개념순·가변 entity 페이지)는 `/vault-distill`로 event를 압축해 지식을 복리시킨다. 현재 MCP는 hybrid relevance와 type/project 필터를 제공하며, `importance`·`superseded_by`는 노트 품질 메타데이터다.
 

@@ -2,6 +2,7 @@
 name: vault-add-project
 description: "프로젝트 초기화. .claude/rules/ 설치 + vault 프로젝트 폴더 생성."
 argument-hint: "[언어...] (예: cpp python, 기본: cpp python)"
+disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 effort: medium
 ---
@@ -9,6 +10,8 @@ effort: medium
 ## 프로젝트 초기화 프로토콜
 
 현재 작업 디렉토리를 Claude Code 프로젝트로 초기화하고, vault에 프로젝트 노트를 생성한다.
+
+**실행 조건:** 사용자가 이 skill을 직접 호출했거나 프로젝트 초기화를 명시적으로 요청·승인했을 때만 실행한다. 스스로 판단해 시작하지 않는다.
 
 VAULT_DIR: `$PIMP_MY_VAULT_DIR` 또는 `$CLAUDE_VAULT_DIR` (미설정 시 `~/Documents/vault`)
 PIMP_MY_CLAUDE_DIR: 아래 순서로 탐색:
@@ -76,7 +79,7 @@ repo: <git remote get-url origin, 없으면 빈 문자열>
 
 ### 5. 자동 동기화
 
-프로젝트 노트를 만든 뒤 자동 동기화한다.
+사용자가 요청·승인한 초기화로 프로젝트 노트를 새로 만든 경우에만 자동 동기화한다(이미 있어 건너뛰었으면 실행하지 않는다).
 ```bash
 {{REPO_DIR}}/bin/vault-sync.sh --commit "project: init <프로젝트명>" -- "projects/<프로젝트명>.md"
 ```

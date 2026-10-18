@@ -1,11 +1,16 @@
 ---
 name: vault-daily
-description: "하루 마무리 정리. 현재 세션 포함, 오늘 세션들을 종합하여 daily note 생성/업데이트."
+description: "사용자가 직접 요청할 때만 실행. 현재 세션 포함, 오늘 세션들을 종합하여 daily note 생성/업데이트."
+disable-model-invocation: true
 allowed-tools: Read, Write, Glob, Grep, Bash
 effort: high
 ---
 
 ## Daily Note 생성/업데이트
+
+**실행 조건:** 사용자가 이번 대화에서 이 skill을 직접 호출했거나 daily note 작성을 명시적으로 요청·승인했을 때만 실행한다.
+"끝", "마무리", "오늘 여기까지" 같은 말만으로는 시작하지 말고, daily note 작성을 한 줄로 제안만 한다.
+아래 세션 저장, 역링크 추가, 자동 동기화(commit·push)도 사용자가 요청·승인한 이 작업 범위 안에서만 수행한다.
 
 VAULT_DIR은 `~/Documents/vault` (환경변수 `PIMP_MY_VAULT_DIR` 또는 `CLAUDE_VAULT_DIR`으로 오버라이드 가능).
 
@@ -109,7 +114,7 @@ daily note 생성 후, 오늘의 각 세션 노트(`sessions/YYYY-MM-DD-*.md`)�
 
 #### 6. 자동 동기화
 
-생성·갱신한 session, daily, decision, lesson의 정확한 파일 경로를 모두 넘겨 자동 동기화한다.
+사용자가 요청·승인한 daily 작업이면, 생성·갱신한 session(5단계에서 역링크를 추가한 세션 노트 포함), daily, decision, lesson의 정확한 파일 경로를 모두 넘겨 자동 동기화한다.
 ```bash
 SYNC_PATHS=("$SESSION_PATH" "$DAILY_PATH")
 [ -n "${NOTE_PATH:-}" ] && SYNC_PATHS+=("$NOTE_PATH")

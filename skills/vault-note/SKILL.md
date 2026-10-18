@@ -97,11 +97,11 @@ VAULT_DIR은 `~/Documents/vault` (환경변수 `CLAUDE_VAULT_DIR`으로 오버�
 
 ### 자동 동기화
 
-노트를 만든 뒤 생성·갱신한 정확한 파일 경로를 `NOTE_PATH`에 두고 아래를 실행한다.
+사용자가 요청·승인한 노트를 만든 뒤 생성·갱신한 정확한 파일 경로를 `NOTE_PATH`에 두고 아래를 실행한다.
 ```bash
 {{REPO_DIR}}/bin/vault-sync.sh --commit "note: <타입> - <제목>" -- "$NOTE_PATH"
 ```
-이 스크립트는 기존 변경을 stash로 보호한 뒤 pull/rebase, 해당 노트만 commit, push를 수행한다.
+이 스크립트는 기존 변경을 stash로 보호한 뒤 pull/rebase, 해당 노트만 commit, push를 수행한다. 다른 변경은 staged 상태까지 그대로 남는다.
 충돌·sync 실패는 절대 무시하지 말고 즉시 중단해 사용자에게 상태를 알린다.
 
 ### 주의
