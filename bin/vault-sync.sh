@@ -58,12 +58,21 @@ if [ "$MODE" = "commit" ]; then
     esac
     lower="$(printf '%s' "$path" | tr '[:upper:]' '[:lower:]')"
     IFS='/' read -r -a parts <<< "$lower"
+    normalized=""
     for part in "${parts[@]}"; do
       case "$part" in
         ..) fail "path must stay inside the vault: '$path'" ;;
         .git) fail "path must not point into .git: '$path'" ;;
+        ''|.) ;;
+        *) normalized="${normalized:+$normalized/}$part" ;;
       esac
     done
+    # Raw transcripts and hook logs from older installs never go into a sync commit.
+    # Files already committed earlier are not touched here; cleaning them up is the user's call.
+    case "$normalized" in
+      sessions/pre-compact/*|sessions/subagent-activity.log)
+        fail "transcript backups and hook logs are not synced: '$path'" ;;
+    esac
     if [ -L "$path" ] || [ -f "$path" ]; then
       :
     elif [ -e "$path" ]; then

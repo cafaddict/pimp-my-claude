@@ -72,9 +72,11 @@ fi
 # --- config 점검 staleness 넛지 (분기 백스톱) ---
 # /config-review가 갱신하는 마커 파일 기준. date 산술만, 네트워크/git 무호출.
 # 임계 미만이면 완전 침묵(over-nag 방지). 기본 90일 = 분기(커뮤니티 관행 기본값).
+# 마커는 vault 밖에 둔다. 예전 vault 루트 마커는 새 마커가 없을 때 읽기만 한다.
 
 CONFIG_NUDGE=""
-STAMP="$VAULT_DIR/.config-review-stamp"
+STAMP="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.config-review-stamp"
+[ -f "$STAMP" ] || STAMP="$VAULT_DIR/.config-review-stamp"
 THRESH="${CLAUDE_CONFIG_REVIEW_DAYS:-90}"
 if [ "$THRESH" -gt 0 ] 2>/dev/null; then
   if [ -f "$STAMP" ]; then

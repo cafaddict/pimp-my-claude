@@ -16,7 +16,7 @@
 ## Vault
 
 - The optional shared knowledge vault uses `PIMP_MY_VAULT_DIR`; when it is unset, use `~/Documents/vault`.
-- When a decision or lesson will be useful in a later project, use the installed `$vault-note` skill to save it.
+- When a decision or lesson will be useful in a later project, propose saving it. Save it with the installed `$vault-note` skill only when the user asks or approves.
 - Use `$vault-recall` or `$vault-search` before repeating a decision that may already be recorded.
 
 ## Maintenance

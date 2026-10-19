@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2088  # settings.json stores literal "~/" commands; compare them as text.
 # Lightweight contracts for installers. Does not touch the real home directory.
 
 set -euo pipefail
@@ -24,7 +25,7 @@ git config --file "$GIT_CONFIG_GLOBAL" core.hooksPath /dev/null
 git config --file "$GIT_CONFIG_GLOBAL" commit.gpgsign false
 git config --file "$GIT_CONFIG_GLOBAL" init.defaultBranch main
 
-bash -n "$REPO_DIR/setup.sh" "$REPO_DIR/setup-codex.sh" "$REPO_DIR"/hooks/*.sh "$REPO_DIR"/bin/*.sh
+bash -n "$REPO_DIR/setup.sh" "$REPO_DIR/setup-codex.sh" "$REPO_DIR"/hooks/*.sh "$REPO_DIR"/bin/*.sh "$REPO_DIR"/lib/*.sh
 jq empty "$REPO_DIR/settings-template.json" "$REPO_DIR/codex/hooks.json"
 
 CLAUDE_HOME="$TEST_DIR/claude-home"
@@ -46,7 +47,7 @@ HOME="$TEST_DIR/codex-home" CODEX_HOME="$CODEX_HOME" AGENTS_HOME="$AGENTS_HOME" 
 jq -e '.hooks.SessionStart[0].hooks[0].command == "keep-session"' "$CODEX_HOME/hooks.json" >/dev/null
 jq -e '.hooks.PreToolUse | length == 1' "$CODEX_HOME/hooks.json" >/dev/null
 jq -e '.hooks.Stop | length == 1' "$CODEX_HOME/hooks.json" >/dev/null
-test -f "$CODEX_HOME/hooks.json.bak"
+test -f "$(ls -d "$CODEX_HOME/pimp-my-codex/backups/"*/ | head -1)hooks.json"
 test -f "$AGENTS_HOME/skills/vault-search/SKILL.md"
 test -x "$CODEX_HOME/pimp-my-codex/bin/vault-sync.sh"
 cmp "$REPO_DIR/bin/vault-sync.sh" "$CODEX_HOME/pimp-my-codex/bin/vault-sync.sh"
@@ -247,6 +248,357 @@ done
 test -z "$(find "$TEST_DIR" -maxdepth 1 -name 'ran-*')"
 SL_OUT="$(statusline "$SL_HOME/Downloads/notes")"
 case "$SL_OUT" in *"~/$(printf '\357\200\231')/notes"*) ;; *) echo "statusline: Downloads glyph missing" >&2; exit 1 ;; esac
+
+# --- Codex render: paths are never rewritten as `$skill` names ------------------------------
+# Path segments such as /review/ and /vault-x/ used to be rewritten into `$review`, `$vault-x`.
+R_AGENTS="$TEST_DIR/render/review/vault-x/agents"
+R_CODEX="$TEST_DIR/render/vault-y/codex"
+HOME="$TEST_DIR/render-home" CODEX_HOME="$R_CODEX" AGENTS_HOME="$R_AGENTS" PIMP_MY_VAULT_DIR="$TEST_DIR/render-vault" \
+  "$REPO_DIR/setup-codex.sh" >/dev/null
+PW="$R_AGENTS/skills/plain-words/SKILL.md"
+rg -F "$R_AGENTS/skills/plain-words/scripts/check.py" "$PW" >/dev/null
+refute rg -e '[A-Za-z0-9_/]\$(plain-words|review|vault-)' "$R_AGENTS/skills"
+rg -F '`$vault-note`' "$R_AGENTS/skills/vault-search/SKILL.md" >/dev/null
+rg -F "$R_CODEX/pimp-my-codex/bin/vault-sync.sh --pull" "$R_AGENTS/skills/vault-search/SKILL.md" >/dev/null
+# Run the checker exactly as the rendered skill names it.
+CHECKER="$(rg -o '^python (\S+/check\.py) --list' -r '$1' "$PW")"
+test -f "$CHECKER"
+python3 -I "$CHECKER" --list >/dev/null
+printf '%s\n' 'We utilize the queue.' > "$TEST_DIR/prose.md"
+refute python3 -I "$CHECKER" "$TEST_DIR/prose.md"
+
+# --- Claude settings: clean install, re-run, explicit upgrade, rollback ----------------------
+settings_of() { echo "$1/.claude/settings.json"; }
+FRESH="$TEST_DIR/fresh-home"
+mkdir -p "$FRESH"
+HOME="$FRESH" "$REPO_DIR/setup.sh" >/dev/null
+cmp "$REPO_DIR/settings-template.json" "$(settings_of "$FRESH")"
+test ! -e "$FRESH/.claude/hooks/prompt-hint.sh"
+test ! -e "$REPO_DIR/hooks/prompt-hint.sh"  # retired: removed from source, never from an install
+cp "$(settings_of "$FRESH")" "$TEST_DIR/fresh-1.json"
+HOME="$FRESH" "$REPO_DIR/setup.sh" >/dev/null
+cmp "$TEST_DIR/fresh-1.json" "$(settings_of "$FRESH")"
+HOME="$FRESH" "$REPO_DIR/setup.sh" --upgrade-hooks | rg -F '변경 없음' >/dev/null
+test ! -d "$FRESH/.claude/pimp-my-claude-backups"
+
+# An existing install from an older version, plus things the user added.
+UP="$TEST_DIR/upgrade-home"
+UPS="$(settings_of "$UP")"
+UP_VAULT="$TEST_DIR/upgrade-vault"
+mkdir -p "$UP/.claude/hooks" "$UP/.claude/skills/guide" "$UP_VAULT/sessions/pre-compact"
+printf '%s\n' 'legacy transcript sentinel' > "$UP_VAULT/sessions/pre-compact/transcript-old.jsonl"
+printf '%s\n' 'legacy log sentinel' > "$UP_VAULT/sessions/subagent-activity.log"
+(cd "$UP_VAULT" && cksum sessions/pre-compact/transcript-old.jsonl sessions/subagent-activity.log) > "$TEST_DIR/legacy-before"
+cat > "$UPS" <<'JSON'
+{
+  "statusLine": {"type": "command", "command": "cc-status", "padding": 0},
+  "env": {"MY_FLAG": "1"},
+  "permissions": {"additionalDirectories": ["/keep"]},
+  "hooks": {
+    "UserPromptSubmit": [
+      {"matcher": "", "hooks": [
+        {"type": "command", "command": "~/.claude/hooks/prompt-hint.sh", "timeout": 1000},
+        {"type": "command", "command": "~/.claude/hooks/plain-words-remind.sh", "timeout": 1000}
+      ]}
+    ],
+    "SessionStart": [{"matcher": "", "hooks": [{"type": "command", "command": "~/.claude/hooks/vault-briefing.sh", "timeout": 2000}]}],
+    "PreToolUse": [
+      {"matcher": "Bash", "hooks": [
+        {"type": "command", "command": "~/.claude/hooks/block-dangerous.sh", "statusMessage": "명령어 안전성 검증...",
+         "if": "Bash(rm *) | Bash(git push *) | Bash(git reset *) | Bash(git clean *) | Bash(*DROP TABLE*) | Bash(*DROP DATABASE*)"},
+        {"type": "command", "command": "my-bash-audit --strict"}
+      ]},
+      {"matcher": "Write|Edit", "hooks": [
+        {"type": "command", "command": "~/.claude/hooks/protect-sensitive.sh", "statusMessage": "민감 파일 확인...", "async": true}
+      ]}
+    ],
+    "SubagentStop": [{"matcher": "", "hooks": [{"type": "command", "command": "~/.claude/hooks/subagent-stop-log.sh", "timeout": 2000}]}],
+    "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": ":"}]}]
+  }
+}
+JSON
+cp "$UPS" "$TEST_DIR/upgrade-original.json"
+# Installed scripts: one old shipped version, one edited copy, one retired file.
+OLD_REV=a696699
+if git -C "$REPO_DIR" cat-file -e "$OLD_REV:hooks/block-dangerous.sh" 2>/dev/null; then
+  git -C "$REPO_DIR" show "$OLD_REV:hooks/block-dangerous.sh" > "$UP/.claude/hooks/block-dangerous.sh"
+  git -C "$REPO_DIR" show "$OLD_REV:hooks/prompt-hint.sh" > "$UP/.claude/hooks/prompt-hint.sh"
+  HAS_HISTORY=true
+else
+  cp "$REPO_DIR/hooks/block-dangerous.sh" "$UP/.claude/hooks/block-dangerous.sh"
+  printf '%s\n' '#!/bin/bash' 'exit 0' > "$UP/.claude/hooks/prompt-hint.sh"
+  HAS_HISTORY=false
+fi
+cp "$UP/.claude/hooks/block-dangerous.sh" "$TEST_DIR/old-block-dangerous.sh"
+{ cat "$REPO_DIR/hooks/protect-sensitive.sh"; echo '# my local tweak'; } > "$UP/.claude/hooks/protect-sensitive.sh"
+cp "$UP/.claude/hooks/protect-sensitive.sh" "$TEST_DIR/edited-protect.sh"
+printf '%s\n' '---' 'name: guide' '---' 'my own guide' > "$UP/.claude/skills/guide/SKILL.md"
+cp "$UP/.claude/hooks/prompt-hint.sh" "$TEST_DIR/prompt-hint-installed.sh"
+chmod +x "$UP/.claude/hooks/"*.sh
+
+uprun() { HOME="$UP" PIMP_MY_VAULT_DIR="$UP_VAULT" CLAUDE_VAULT_DIR="$UP_VAULT" "$REPO_DIR/setup.sh" "$@"; }
+count_cmd() { jq --arg e "$1" --arg c "$2" '[.hooks[$e][]?.hooks[]? | select(.command == $c)] | length' "$UPS"; }
+
+# Default re-run: existing values win, nothing is bound twice, edited files stay.
+uprun > "$TEST_DIR/rerun.out"
+rg -F -- '--upgrade-hooks' "$TEST_DIR/rerun.out" >/dev/null
+jq -e '.statusLine == {"type": "command", "command": "cc-status", "padding": 0}' "$UPS" >/dev/null
+jq -e '.env.MY_FLAG == "1" and (.permissions.additionalDirectories | index("/keep") and index("~/.claude"))' "$UPS" >/dev/null
+jq -e '[.hooks[] | [.[].hooks[]?.command] | group_by(.) | map(length) | max // 0] | max == 1' "$UPS" >/dev/null
+test "$(count_cmd UserPromptSubmit '~/.claude/hooks/prompt-hint.sh')" = 1
+test "$(count_cmd Stop '~/.claude/hooks/notify-done.sh')" = 1
+jq -e '.hooks.PreToolUse[0].hooks[0] | has("if")' "$UPS" >/dev/null
+cmp "$TEST_DIR/old-block-dangerous.sh" "$UP/.claude/hooks/block-dangerous.sh"
+cmp "$TEST_DIR/edited-protect.sh" "$UP/.claude/hooks/protect-sensitive.sh"
+rg -x 'my own guide' "$UP/.claude/skills/guide/SKILL.md" >/dev/null
+cp "$UPS" "$TEST_DIR/after-rerun.json"
+uprun >/dev/null
+cmp "$TEST_DIR/after-rerun.json" "$UPS"
+
+# Dry run: shows a diff, writes nothing.
+uprun --upgrade-hooks --dry-run > "$TEST_DIR/dry.out"
+rg -F -- '--dry-run' "$TEST_DIR/dry.out" >/dev/null
+rg -F -- '-  "hooks"' "$TEST_DIR/dry.out" >/dev/null || rg -F '"if"' "$TEST_DIR/dry.out" >/dev/null
+cmp "$TEST_DIR/after-rerun.json" "$UPS"
+cmp "$TEST_DIR/old-block-dangerous.sh" "$UP/.claude/hooks/block-dangerous.sh"
+ls "$UP/.claude/pimp-my-claude-backups" > "$TEST_DIR/backups-before-upgrade"
+
+# Explicit upgrade.
+uprun --upgrade-hooks > "$TEST_DIR/upgrade.out"
+NEW_BACKUP="$(comm -13 "$TEST_DIR/backups-before-upgrade" <(ls "$UP/.claude/pimp-my-claude-backups"))"
+test "$(printf '%s\n' "$NEW_BACKUP" | wc -l | tr -d ' ')" = 1
+BK="$UP/.claude/pimp-my-claude-backups/$NEW_BACKUP"
+cmp "$TEST_DIR/after-rerun.json" "$BK/settings.json"
+test "$(count_cmd PreToolUse '~/.claude/hooks/block-dangerous.sh')" = 1
+jq -e '[.hooks.PreToolUse[].hooks[] | select(.command == "~/.claude/hooks/block-dangerous.sh")][0] | has("if") | not' "$UPS" >/dev/null
+jq -e '[.hooks.UserPromptSubmit[].hooks[] | select(.command == "~/.claude/hooks/plain-words-remind.sh")] | length == 1 and .[0].timeout == 5' "$UPS" >/dev/null
+test "$(count_cmd UserPromptSubmit '~/.claude/hooks/prompt-hint.sh')" = 0
+cmp "$TEST_DIR/prompt-hint-installed.sh" "$UP/.claude/hooks/prompt-hint.sh"
+jq -e '.statusLine.command == "cc-status"' "$UPS" >/dev/null
+test "$(count_cmd Stop ':')" = 1
+test "$(count_cmd PreToolUse 'my-bash-audit --strict')" = 1
+jq -e '.hooks.PreToolUse[0].hooks | map(.command) | index("my-bash-audit --strict")' "$UPS" >/dev/null
+test "$(count_cmd SessionStart '~/.claude/hooks/vault-briefing.sh')" = 1
+test "$(count_cmd SubagentStop '~/.claude/hooks/subagent-stop-log.sh')" = 1
+jq -e '[.hooks.PreToolUse[].hooks[] | select(.command == "~/.claude/hooks/protect-sensitive.sh")] | length == 1 and .[0].async == true' "$UPS" >/dev/null
+rg -F '보류' "$TEST_DIR/upgrade.out" | rg -F 'protect-sensitive' >/dev/null
+cmp "$TEST_DIR/edited-protect.sh" "$UP/.claude/hooks/protect-sensitive.sh"
+if [ "$HAS_HISTORY" = true ]; then
+  cmp "$REPO_DIR/hooks/block-dangerous.sh" "$UP/.claude/hooks/block-dangerous.sh"
+  cmp "$TEST_DIR/old-block-dangerous.sh" "$BK/hooks/block-dangerous.sh"
+fi
+rg -x 'my own guide' "$UP/.claude/skills/guide/SKILL.md" >/dev/null
+# A hook installed as a symlink (e.g. into a dotfiles repo) stays a symlink.
+test -L "$UP/.claude/hooks/notify-done.sh" || {
+  mv "$UP/.claude/hooks/notify-done.sh" "$TEST_DIR/dotfiles-notify.sh"
+  printf '%s\n' '# my dotfiles copy' >> "$TEST_DIR/dotfiles-notify.sh"
+  ln -s "$TEST_DIR/dotfiles-notify.sh" "$UP/.claude/hooks/notify-done.sh"
+}
+uprun --upgrade-hooks >/dev/null
+uprun >/dev/null
+test -L "$UP/.claude/hooks/notify-done.sh"
+test "$(tail -1 "$TEST_DIR/dotfiles-notify.sh")" = '# my dotfiles copy'
+cp "$UPS" "$TEST_DIR/after-upgrade.json"
+cp "$UP/.claude/hooks/block-dangerous.sh" "$TEST_DIR/after-upgrade-block.sh"
+
+# A second upgrade changes nothing and makes no new backup; the first backup is untouched.
+uprun --upgrade-hooks | rg -F '변경 없음' >/dev/null
+cmp "$TEST_DIR/after-upgrade.json" "$UPS"
+test "$(ls "$UP/.claude/pimp-my-claude-backups" | wc -l | tr -d ' ')" = "$(( $(wc -l < "$TEST_DIR/backups-before-upgrade") + 1 ))"
+cmp "$TEST_DIR/after-rerun.json" "$BK/settings.json"
+# Default re-run after the upgrade keeps it as is.
+uprun >/dev/null
+cmp "$TEST_DIR/after-upgrade.json" "$UPS"
+
+# Rollback with the printed commands restores the pre-upgrade bytes.
+bash "$BK/restore-commands.txt"
+cmp "$TEST_DIR/after-rerun.json" "$UPS"
+cmp "$TEST_DIR/old-block-dangerous.sh" "$UP/.claude/hooks/block-dangerous.sh"
+# Legacy vault data is never moved or changed by any of the runs above.
+(cd "$UP_VAULT" && cksum sessions/pre-compact/transcript-old.jsonl sessions/subagent-activity.log) > "$TEST_DIR/legacy-after"
+cmp "$TEST_DIR/legacy-before" "$TEST_DIR/legacy-after"
+test ! -e "$UP/.claude/pre-compact-backups"
+
+# Malformed settings: stop before changing anything.
+BAD="$TEST_DIR/bad-home"
+mkdir -p "$BAD/.claude"
+printf '%s\n' '{"hooks": ' > "$BAD/.claude/settings.json"
+cp "$BAD/.claude/settings.json" "$TEST_DIR/bad.json"
+refute env HOME="$BAD" "$REPO_DIR/setup.sh"
+cmp "$TEST_DIR/bad.json" "$BAD/.claude/settings.json"
+test ! -e "$BAD/.claude/hooks"
+refute env HOME="$BAD" "$REPO_DIR/setup.sh" --upgrade-hooks
+cmp "$TEST_DIR/bad.json" "$BAD/.claude/settings.json"
+printf '%s\n' '{"hooks": []}' > "$BAD/.claude/settings.json"
+cp "$BAD/.claude/settings.json" "$TEST_DIR/bad.json"
+refute env HOME="$BAD" "$REPO_DIR/setup.sh" --upgrade-hooks
+cmp "$TEST_DIR/bad.json" "$BAD/.claude/settings.json"
+refute env HOME="$BAD" "$REPO_DIR/setup.sh" --dry-run
+refute env HOME="$BAD" "$REPO_DIR/setup.sh" --upgrade-hook
+
+# --- Codex hooks: default keeps, --upgrade-hooks replaces only what we shipped --------------
+if [ "$HAS_HISTORY" = true ]; then
+  CX="$TEST_DIR/codex-up"
+  CXI="$CX/pimp-my-codex"
+  mkdir -p "$CXI/hooks"
+  git -C "$REPO_DIR" show "a3e60f6:codex/hooks.json" | sed "s|{{CODEX_INSTALL_DIR}}|$CXI|g" > "$CX/hooks.json"
+  jq '.hooks.Stop[0].hooks += [{"type": "command", "command": "my-codex-notify"}]' "$CX/hooks.json" > "$CX/h.tmp"
+  mv "$CX/h.tmp" "$CX/hooks.json"
+  for h in plain-words-remind block-dangerous notify-done prompt-hint; do
+    git -C "$REPO_DIR" show "a3e60f6:hooks/$h.sh" \
+      | sed -e 's/CLAUDE_VAULT_DIR/PIMP_MY_VAULT_DIR/g' -e 's/CLAUDE_CONFIG_REVIEW_DAYS/PIMP_MY_CONFIG_REVIEW_DAYS/g' \
+            -e 's/CLAUDE_CONFIG_DIR/CODEX_CONFIG_DIR/g' -e 's#\.claude#\.codex#g' -e 's/Claude Code/Codex/g' \
+      > "$CXI/hooks/$h.sh"
+  done
+  cp "$CX/hooks.json" "$TEST_DIR/codex-original.json"
+  cp "$CXI/hooks/block-dangerous.sh" "$TEST_DIR/codex-old-block.sh"
+  cxrun() { HOME="$TEST_DIR/codex-up-home" CODEX_HOME="$CX" AGENTS_HOME="$TEST_DIR/codex-up-agents" \
+    PIMP_MY_VAULT_DIR="$TEST_DIR/codex-up-vault" "$REPO_DIR/setup-codex.sh" "$@"; }
+  cxrun --with-hooks >/dev/null
+  cmp "$TEST_DIR/codex-original.json" "$CX/hooks.json"
+  cmp "$TEST_DIR/codex-old-block.sh" "$CXI/hooks/block-dangerous.sh"
+  cxrun --upgrade-hooks --dry-run >/dev/null
+  cmp "$TEST_DIR/codex-original.json" "$CX/hooks.json"
+  cxrun --upgrade-hooks >/dev/null
+  jq -e '[.hooks.UserPromptSubmit[].hooks[].command] | all(test("prompt-hint") | not)' "$CX/hooks.json" >/dev/null
+  test -f "$CXI/hooks/prompt-hint.sh"
+  jq -e '[.hooks.SessionStart[].hooks[].command] | any(test("vault-briefing"))' "$CX/hooks.json" >/dev/null
+  jq -e '[.hooks.Stop[].hooks[].command] | index("my-codex-notify")' "$CX/hooks.json" >/dev/null
+  jq -e '[.hooks[] | [.[].hooks[]?.command] | group_by(.) | map(length) | max // 0] | max == 1' "$CX/hooks.json" >/dev/null
+  refute cmp -s "$TEST_DIR/codex-old-block.sh" "$CXI/hooks/block-dangerous.sh"
+  CXB="$(ls -d "$CXI/backups/"*/ | head -1)"
+  cmp "$TEST_DIR/codex-original.json" "$CXB/hooks.json"
+  cp "$CX/hooks.json" "$TEST_DIR/codex-upgraded.json"
+  cxrun --upgrade-hooks | rg -F 'Hooks unchanged' >/dev/null
+  cmp "$TEST_DIR/codex-upgraded.json" "$CX/hooks.json"
+  bash "$CXB/restore-commands.txt"
+  cmp "$TEST_DIR/codex-original.json" "$CX/hooks.json"
+  cmp "$TEST_DIR/codex-old-block.sh" "$CXI/hooks/block-dangerous.sh"
+fi
+
+# --- Codex skills: clean install, known update, your edits kept, re-run idempotent ----------
+CXS="$TEST_DIR/cxs-agents"
+cxs() { HOME="$TEST_DIR/cxs-home" CODEX_HOME="$TEST_DIR/cxs-codex" AGENTS_HOME="$CXS" \
+  PIMP_MY_VAULT_DIR="$TEST_DIR/cxs-vault" "$@"; }
+tree_sum() { (cd "$1" && find . -type f | sort | while IFS= read -r f; do cksum "$f"; done); }
+cxs "$REPO_DIR/setup-codex.sh" > "$TEST_DIR/cxs-1.out"
+cp -R "$CXS/skills" "$TEST_DIR/cxs-ref"
+cxs "$REPO_DIR/setup-codex.sh" > "$TEST_DIR/cxs-2.out"
+rg -F ': 0 file(s) installed or updated' "$TEST_DIR/cxs-2.out" >/dev/null
+refute rg -F 'Kept' "$TEST_DIR/cxs-2.out"
+diff -r "$TEST_DIR/cxs-ref" "$CXS/skills" >/dev/null
+# Copies installed by earlier installers (their own rendering) are recognised and updated.
+if [ "$HAS_HISTORY" = true ]; then
+  for rev in a3e60f6 a696699; do
+    mv "$CXS/skills" "$TEST_DIR/cxs-before-$rev"
+    mkdir -p "$TEST_DIR/old-$rev"
+    git -C "$REPO_DIR" archive "$rev" | tar -x -C "$TEST_DIR/old-$rev"
+    cxs bash "$TEST_DIR/old-$rev/setup-codex.sh" >/dev/null
+    refute diff -r "$TEST_DIR/cxs-ref" "$CXS/skills"
+    cxs "$REPO_DIR/setup-codex.sh" > "$TEST_DIR/cxs-$rev.out"
+    refute rg -F 'Kept' "$TEST_DIR/cxs-$rev.out"
+    diff -r "$TEST_DIR/cxs-ref" "$CXS/skills" >/dev/null
+  done
+fi
+# Edited SKILL.md / checker and files you added are kept; the edited ones are listed.
+printf '%s\n' '- my review rule' >> "$CXS/skills/review/SKILL.md"
+printf '%s\n' '# my checker tweak' >> "$CXS/skills/plain-words/scripts/check.py"
+printf '%s\n' 'my notes' > "$CXS/skills/review/notes.md"
+printf '%s\n' 'echo mine' > "$CXS/skills/plain-words/scripts/extra.sh"
+tree_sum "$CXS/skills" > "$TEST_DIR/cxs-edited.sum"
+cxs "$REPO_DIR/setup-codex.sh" > "$TEST_DIR/cxs-edit.out"
+tree_sum "$CXS/skills" > "$TEST_DIR/cxs-now.sum"; cmp "$TEST_DIR/cxs-now.sum" "$TEST_DIR/cxs-edited.sum"
+rg -F 'Kept 2 skill file(s)' "$TEST_DIR/cxs-edit.out" >/dev/null
+rg -F "$CXS/skills/review/SKILL.md" "$TEST_DIR/cxs-edit.out" >/dev/null
+rg -F "$CXS/skills/plain-words/scripts/check.py" "$TEST_DIR/cxs-edit.out" >/dev/null
+cxs "$REPO_DIR/setup-codex.sh" >/dev/null
+tree_sum "$CXS/skills" > "$TEST_DIR/cxs-now.sum"; cmp "$TEST_DIR/cxs-now.sum" "$TEST_DIR/cxs-edited.sum"
+# The printed review/rollback steps work.
+mv "$CXS/skills/review/SKILL.md" "$CXS/skills/review/SKILL.md.mine"
+cxs "$REPO_DIR/setup-codex.sh" >/dev/null
+cmp "$TEST_DIR/cxs-ref/review/SKILL.md" "$CXS/skills/review/SKILL.md"
+mv "$CXS/skills/review/SKILL.md.mine" "$CXS/skills/review/SKILL.md"
+tree_sum "$CXS/skills" > "$TEST_DIR/cxs-now.sum"; cmp "$TEST_DIR/cxs-now.sum" "$TEST_DIR/cxs-edited.sum"
+# --upgrade-hooks never touches skills.
+cxs "$REPO_DIR/setup-codex.sh" --upgrade-hooks >/dev/null 2>&1 || true
+tree_sum "$CXS/skills" > "$TEST_DIR/cxs-now.sum"; cmp "$TEST_DIR/cxs-now.sum" "$TEST_DIR/cxs-edited.sum"
+
+# --- /guide frontmatter extraction keeps multi-line descriptions ---------------------------
+eval "$(sed -n '/^   fm() {/,/cut -c1-200; }$/p' "$FRESH/.claude/skills/guide/SKILL.md")"
+for f in "$REPO_DIR"/agents/*.md "$REPO_DIR"/skills/*/SKILL.md; do
+  if frontmatter "$f" | rg -q '^description: *[|>]'; then
+    fm "$f" | awk '/^description:/{d=1;next} d && /^[[:space:]]+[^[:space:]]/{ok=1} END{exit !ok}' \
+      || { echo "guide: multi-line description lost for $f" >&2; exit 1; }
+  fi
+done
+fm "$REPO_DIR/agents/researcher.md" | rg -F '리서치 전문가' >/dev/null
+fm "$REPO_DIR/agents/researcher.md" | rg '^tools:' >/dev/null
+
+# --- Paths the rendered commands cannot run from are refused before any write ---------------
+refute env HOME="$TEST_DIR/sp-home" CODEX_HOME="$TEST_DIR/sp ace/codex" AGENTS_HOME="$TEST_DIR/sp-agents" \
+  "$REPO_DIR/setup-codex.sh" --with-hooks
+test ! -e "$TEST_DIR/sp ace" && test ! -e "$TEST_DIR/sp-agents"
+refute env HOME="$TEST_DIR/sp-home" CODEX_HOME="$TEST_DIR/sp-codex" AGENTS_HOME="$TEST_DIR/a&b|c/agents" \
+  "$REPO_DIR/setup-codex.sh"
+test ! -e "$TEST_DIR/sp-codex" && test ! -e "$TEST_DIR/a&b|c"
+mkdir -p "$TEST_DIR/my repo"
+cp -R "$REPO_DIR/setup.sh" "$REPO_DIR/lib" "$REPO_DIR/settings-template.json" "$TEST_DIR/my repo/"
+mkdir -p "$TEST_DIR/sp-claude-home"
+refute env HOME="$TEST_DIR/sp-claude-home" "$TEST_DIR/my repo/setup.sh"
+test ! -e "$TEST_DIR/sp-claude-home/.claude"
+# Non-ASCII paths are fine: the rendered checker still runs.
+KO="$TEST_DIR/한글/agents"
+HOME="$TEST_DIR/ko-home" CODEX_HOME="$TEST_DIR/ko-codex" AGENTS_HOME="$KO" "$REPO_DIR/setup-codex.sh" >/dev/null
+KO_CHECKER="$(rg -o '^python (\S+/check\.py) --list' -r '$1' "$KO/skills/plain-words/SKILL.md")"
+python3 -I "$KO_CHECKER" --list >/dev/null
+
+# --- settings.json / hooks.json symlink or unreadable structure: stop before any write ------
+SYM="$TEST_DIR/sym-home"
+mkdir -p "$SYM/.claude"
+printf '%s\n' '{"env": {"A": "1"}}' > "$TEST_DIR/dotfiles-settings.json"
+cp "$TEST_DIR/dotfiles-settings.json" "$TEST_DIR/dotfiles-settings.orig"
+ln -s "$TEST_DIR/dotfiles-settings.json" "$SYM/.claude/settings.json"
+refute env HOME="$SYM" "$REPO_DIR/setup.sh"
+refute env HOME="$SYM" "$REPO_DIR/setup.sh" --upgrade-hooks
+test -L "$SYM/.claude/settings.json"
+cmp "$TEST_DIR/dotfiles-settings.orig" "$TEST_DIR/dotfiles-settings.json"
+test "$(ls -A "$SYM/.claude")" = settings.json
+mkdir -p "$TEST_DIR/sym-codex"
+ln -s "$TEST_DIR/dotfiles-settings.json" "$TEST_DIR/sym-codex/hooks.json"
+refute env HOME="$SYM" CODEX_HOME="$TEST_DIR/sym-codex" AGENTS_HOME="$TEST_DIR/sym-agents" "$REPO_DIR/setup-codex.sh" --with-hooks
+test -L "$TEST_DIR/sym-codex/hooks.json" && test ! -e "$TEST_DIR/sym-agents"
+test "$(ls -A "$TEST_DIR/sym-codex")" = hooks.json
+STRUCT="$TEST_DIR/struct-home"
+mkdir -p "$STRUCT/.claude" "$TEST_DIR/struct-codex"
+printf '%s\n' '{"hooks": []}' > "$STRUCT/.claude/settings.json"
+refute env HOME="$STRUCT" "$REPO_DIR/setup.sh"
+test "$(ls -A "$STRUCT/.claude")" = settings.json
+printf '%s\n' '{"hooks": []}' > "$TEST_DIR/struct-codex/hooks.json"
+refute env HOME="$STRUCT" CODEX_HOME="$TEST_DIR/struct-codex" AGENTS_HOME="$TEST_DIR/struct-agents" "$REPO_DIR/setup-codex.sh" --with-hooks
+test ! -e "$TEST_DIR/struct-agents" && test "$(ls -A "$TEST_DIR/struct-codex")" = hooks.json
+
+# --- --upgrade-hooks keeps a handler's other matcher groups (only same-matcher copies go) ---
+if [ "$HAS_HISTORY" = true ]; then
+  MG="$TEST_DIR/matcher-home"
+  mkdir -p "$MG/.claude"
+  git -C "$REPO_DIR" show a696699:settings-template.json | jq '
+    .hooks.PreToolUse as $p
+    | .hooks.PreToolUse = $p + [($p[0]), ($p[1] | .matcher = "NotebookEdit"), ($p[0] | .matcher = "Bash|Monitor")]' \
+    > "$MG/.claude/settings.json"
+  HOME="$MG" "$REPO_DIR/setup.sh" --upgrade-hooks > "$TEST_DIR/matcher.out"
+  jq -e '[.hooks.PreToolUse[].matcher] == ["Bash", "Write|Edit", "NotebookEdit", "Bash|Monitor"]' "$MG/.claude/settings.json" >/dev/null
+  jq -e '[.hooks.PreToolUse[] | select(.matcher == "NotebookEdit") | .hooks[].command] == ["~/.claude/hooks/protect-sensitive.sh"]' "$MG/.claude/settings.json" >/dev/null
+  jq -e '[.hooks.PreToolUse[] | select(.matcher == "Bash|Monitor") | .hooks[]] | length == 1 and (.[0] | has("if") | not)' "$MG/.claude/settings.json" >/dev/null
+  rg -F '중복 제거' -A1 "$TEST_DIR/matcher.out" | rg -F 'block-dangerous' >/dev/null
+
+  CM="$TEST_DIR/codex-matcher"
+  mkdir -p "$CM/pimp-my-codex/hooks"
+  git -C "$REPO_DIR" show "a3e60f6:codex/hooks.json" | sed "s|{{CODEX_INSTALL_DIR}}|$CM/pimp-my-codex|g" \
+    | jq '.hooks.PreToolUse += [(.hooks.PreToolUse[0] | .matcher = "^apply_patch$")]' > "$CM/hooks.json"
+  HOME="$TEST_DIR/cm-home" CODEX_HOME="$CM" AGENTS_HOME="$TEST_DIR/cm-agents" "$REPO_DIR/setup-codex.sh" --upgrade-hooks >/dev/null
+  jq -e '[.hooks.PreToolUse[].matcher] == ["^Bash$", "^apply_patch$"]' "$CM/hooks.json" >/dev/null
+  jq -e '[.hooks.PreToolUse[] | select(.matcher == "^apply_patch$") | .hooks[].command | test("block-dangerous")] == [true]' "$CM/hooks.json" >/dev/null
+fi
 
 PYTHONPYCACHEPREFIX="$TEST_DIR/pycache" python3 -m py_compile "$REPO_DIR"/mcp/*.py
 git -C "$REPO_DIR" diff --check

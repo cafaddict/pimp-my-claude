@@ -4,7 +4,8 @@ This repository ships optional Claude Code and Codex CLI workflows. Keep their b
 
 ## Verify changes
 
-- Shell installers/hooks: `bash -n setup.sh setup-codex.sh hooks/*.sh`
+- Shell installers/hooks: `bash -n setup.sh setup-codex.sh hooks/*.sh lib/*.sh`
+- Installer and hook contracts (temporary HOME only): `bash tests/test-installers.sh` and `bash tests/test-hooks.sh`
 - Python MCP changes: `python3 -m py_compile mcp/*.py`
 - JSON config changes: `jq empty settings-template.json codex/hooks.json`
 - Run `git diff --check` before handoff.

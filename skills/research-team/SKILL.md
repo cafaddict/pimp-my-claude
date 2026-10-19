@@ -4,7 +4,7 @@ description: |
   병렬 리서치 팀. 여러 관점에서 동시에 조사하고 결과를 종합한다.
   Use when: 기술 선택, 라이브러리 비교, 문제 해결 방법 탐색, 깊은 조사가 필요할 때.
 argument-hint: "[리서치 주제]"
-allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Bash, Write, Agent
+allowed-tools: Read, Grep, Glob, WebSearch, WebFetch, Bash, Agent
 effort: high
 ---
 
@@ -47,12 +47,15 @@ $ARGUMENTS를 분석하여 독립적인 조사 관점으로 분해하라.
 - 관련성 순위 매기기
 - 최종 권고안 작성
 
-#### 4. vault 저장
+#### 4. vault 저장 제안
 
-종합 결과를 vault에 저장 (note 스킬 사용):
+자동으로 저장하지 않는다. 출력 끝에 저장 위치를 **제안**만 한다:
 - 기술 선택 → `decisions/`
 - 일반 리서치 → `resources/`
-- 지속적으로 축적할 리서치 영역이면 `areas/<topic>/`에 기록
+- 지속적으로 축적할 리서치 영역이면 `areas/<topic>/`
+
+사용자가 요청하거나 승인하면 메인 세션이 `/vault-note`로 **한 번만** 기록한다. 원격 동기화는
+vault-note의 범위 제한 sync(그 노트 파일만 commit/push)를 따른다.
 
 #### 5. 출력
 
@@ -77,6 +80,6 @@ $ARGUMENTS를 분석하여 독립적인 조사 관점으로 분해하라.
 ```
 
 ### 주의
-- 리서처는 vault/resources/에만 Write 허용 — 프로젝트 파일 수정 금지
+- 리서처는 파일을 쓰지 않는다(프로젝트·vault 모두). 결과는 본문으로 돌려받아 메인 세션이 종합한다
 - 같은 소스를 여러 리서처에 중복 할당하지 마라
 - 종합 없이 개별 결과만 나열하지 마라

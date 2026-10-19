@@ -38,7 +38,8 @@ Claude의 Agent Teams, Claude 전용 subagent 정의, `settings.json`은 Codex�
 
 기존 Claude 설치를 다시 실행할 때도 기존 hook 배열은 안전하게 보존한다. 예전에 설치한 vault
 briefing·자동 format·transcript hook은 자동으로 지우지 않으므로, 필요 없으면
-`~/.claude/settings.json`에서 직접 제거한다.
+`~/.claude/settings.json`에서 직접 제거한다. 설치된 hook 정의·스크립트를 이 버전으로 바꾸는 방법은
+아래 [업그레이드와 복구](#업그레이드와-복구)를 본다. Codex도 같은 방식이다(`./setup-codex.sh --upgrade-hooks`).
 
 ## 설치 옵션
 
@@ -49,11 +50,62 @@ briefing·자동 format·transcript hook은 자동으로 지우지 않으므로,
 | `--with-mcp` | MCP 시맨틱 검색 서버 (BM25 + fastembed + sqlite-vec) | Python 3.10+ |
 | `--with-sdk` | Agent SDK 도구 (claude-review 등) | Python 3.10+ |
 | `--all` | 위 3개 전부 설치 | Python 3.10+ |
+| `--upgrade-hooks` | 설치된 hook 정의·스크립트만 현재 템플릿으로 갱신(diff 출력 → 백업 → 적용). 다른 설치는 하지 않음 | jq |
+| `--dry-run` | `--upgrade-hooks`와 함께: 바뀔 내용만 출력, 아무것도 쓰지 않음 | jq |
 
 ```bash
 # vault 경로 커스텀 (기본: ~/Documents/vault)
 CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 ```
+
+## 업그레이드와 복구
+
+**기본 재실행(`./setup.sh`)은 기존 설정이 우선이다.**
+
+- `settings.json`: 없는 키와 없는 hook만 더한다. 같은 이벤트에 같은 command가 이미 있으면 템플릿 handler를
+  더하지 않는다(예전처럼 같은 hook이 두 번 등록되지 않는다). `statusLine`은 기존 값을 통째로 유지한다.
+  바뀌는 내용이 있으면 쓰기 전에 `~/.claude/pimp-my-claude-backups/<UTC 시각>/settings.json`에 백업한다.
+- 설치된 파일(hooks, bin, skills, agents, rules): 없으면 설치하고, 이 레포가 예전에 배포한 판과 바이트까지
+  같으면(git 기록으로 확인) 새 판으로 바꾼다. 직접 고친 파일은 덮어쓰지 않고 목록만 보여 준다.
+  hook 스크립트는 예전 배포판이어도 기본 재실행에서는 바꾸지 않는다(`--upgrade-hooks` 몫).
+  git clone이 아닌 사본에서 실행하면 예전 판을 확인할 수 없으므로 다른 파일은 모두 "직접 고친 파일"로 보고 둔다.
+- Codex skill 사본(`~/.agents/skills/<skill>/SKILL.md`, `scripts/*`)도 같은 규칙이다. 예전 설치 스크립트들이
+  렌더링한 판(git 기록 + 그때의 렌더링 규칙)과 같으면 새 판으로 바꾸고, 그 밖의 파일은 직접 고쳤거나 출처를
+  판별할 수 없는 사본으로 보고 그대로 둔 채 목록만 보여 준다. skill 폴더에 직접 더한 파일은 건드리지 않는다.
+  보류된 파일을 레포 판으로 바꾸려면 `mv <파일> <파일>.mine && ./setup-codex.sh`, 비교는
+  `diff -u <파일>.mine <파일>`, 되돌리기는 `mv <파일>.mine <파일>`. `--upgrade-hooks`는 skill을 건드리지 않는다.
+- 설치된 파일은 어떤 경우에도 지우지 않는다.
+- 아래 경우에는 아무 파일도 쓰기 전에 멈춘다(exit 1/2): `settings.json`(Codex는 `hooks.json`)이 symlink일 때
+  (dotfiles 연결을 끊지 않도록 — 대상 파일을 직접 편집), JSON이 깨졌거나 `hooks` 구조를 해석할 수 없을 때,
+  레포 경로(Codex는 `CODEX_HOME`·`AGENTS_HOME`)에 공백이나 셸 특수문자(`' " \ $ ; & | < > ( ) * ? [ ] { } ! #`, 백틱)가
+  있을 때(skill·hook의 실행 줄이 경로를 따옴표 없이 쓰기 때문). 한글 같은 비ASCII 경로는 된다.
+
+**명시적 업그레이드:**
+
+```bash
+./setup.sh --upgrade-hooks --dry-run   # 바뀔 내용(diff)만 보기
+./setup.sh --upgrade-hooks             # 백업 후 적용, 되돌리기 명령 출력
+```
+
+- 템플릿 command와 같은 handler라도 **정의 전체가 이 레포가 배포했던 판과 같을 때만** 새 정의로 바꾼다.
+  필드를 더하거나 고친 handler는 같은 command의 handler 전부를 그대로 두고 "보류"로 보고한다.
+- 같은 handler가 여러 group에 있으면 matcher(그 밖의 group 필드 포함)가 같은 group 사이의 중복만 "중복 제거"한다.
+  다른 matcher group(예: 직접 더한 `NotebookEdit`)에 둔 사본은 그 matcher와 함께 남는다.
+- 은퇴한 hook(`prompt-hint`)은 바인딩만 푼다. `~/.claude/hooks/prompt-hint.sh` 파일은 남는다.
+- 외부 handler(예: 다른 도구의 statusLine, `:` 같은 직접 등록한 command)와 선택형 hook(vault-briefing,
+  pre-compact-save, subagent-stop-log, auto-format)은 건드리지 않는다. timeout이 600초를 넘는 정의는 안내만 한다.
+- 바뀌는 것이 없으면 백업도 만들지 않는다. 다시 실행해도 결과는 같다.
+
+**복구:** 업그레이드는 `~/.claude/pimp-my-claude-backups/<UTC 시각>/`에 바꾸기 전 `settings.json`과 hook
+스크립트를 남기고, 같은 폴더의 `restore-commands.txt`에 되돌리는 `cp -p` 명령을 적는다. 그 명령을 실행하면
+업그레이드 전과 바이트까지 같아진다. 백업 폴더는 매번 새로 만들고 덮어쓰지 않는다. Codex는
+`~/.codex/pimp-my-codex/backups/<UTC 시각>/`를 쓴다. 이 레포 자체를 되돌릴 때는 해당 commit을 revert한 뒤
+임시 HOME에서 `bash tests/test-installers.sh`로 확인하고 실제 재설치를 한다.
+
+**한계:** 소스에서 hook을 지우거나 고쳐도 이미 설치된 `settings.json` 바인딩과 파일은 그대로다. 바인딩은
+`--upgrade-hooks`로만 바뀐다. Codex는 hook 정의가 바뀌면 `/hooks`에서 다시 신뢰해야 할 수 있다.
+예전 판 판별은 이 레포의 git 기록과 그때의 렌더링 규칙에 기대므로, 설치 뒤 `CODEX_HOME`/`AGENTS_HOME`을 바꿨거나
+다른 fork에서 설치한 Codex skill 사본은 "출처 불명"으로 보류된다(위 `mv … .mine` 방법으로 직접 정리).
 
 ## 포함된 기능
 
@@ -68,7 +120,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 | 사용자만 |
 | `/plain-words` | 쉬운 단어로 쓰기 — 논문식 한자어(유휴/축출/이질적)·영어 격식어(utilize/facilitate)는 풀고, 정착된 기술 용어(queue/TTFT/threshold)는 억지 번역 금지 | 가능 |
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
-| `/config-review` | harness(CLAUDE.md/rules/skills/hooks/agents) staleness·bloat·중복 감사 → prune/dedup/reroute (vault-promote의 역방향) | 가능 |
+| `/config-review` | harness(CLAUDE.md/rules/skills/hooks/agents) staleness·bloat·중복 감사 → prune/dedup/reroute (vault-promote의 역방향). 리포트만 낼 때는 파일을 쓰지 않음 | 가능 |
 | `/vault-note` | vault에 결정/교훈/패턴 기록 | 사용자 요청·승인 시 |
 | `/vault-recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/vault-search [키워드]` | vault 전체 검색 (decisions/lessons/areas/resources/projects) | 사용자만 |
@@ -77,12 +129,12 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/vault-add-project [언어...]` | 프로젝트 초기화 — `.claude/rules/` + vault 프로젝트 폴더 생성 | 사용자만 |
 | `/vault-promote` | lessons/에서 반복 교훈 탐지 → `.claude/rules/` 승격 제안 | 사용자만 |
 | `/vault-distill [개념]` | event 노트(sessions/lessons/decisions) → `areas/` entity 페이지로 압축·합성 (지식 복리, 출처 추적) | 가능 |
-| `/guide` | 설치된 기능 전체 가이드 | 사용자만 |
+| `/guide` | 설치된 기능 전체 가이드 (hook은 settings.json의 실제 바인딩 기준) | 사용자만 |
 
 #### 팀/멀티에이전트 스킬
 | 스킬 | 방식 | 설명 |
 |------|------|------|
-| `/research-team [주제]` | Subagent 병렬 | 독립적인 다관점 리서치 → 종합. 고급·읽기 중심 작업용 |
+| `/research-team [주제]` | Subagent 병렬 | 독립적인 다관점 리서치 → 종합. vault 저장은 제안만 하고, 사용자가 승인하면 `/vault-note`로 한 번 기록 |
 | `/review-team` | Agent Teams | 경쟁적 3관점 리뷰. 고급·실험적 기능일 수 있음 |
 | `/debug-team` | Agent Teams | 경쟁적 가설 디버깅. 고급·실험적 기능일 수 있음 |
 | `/feature-team [피처들]` | Subagent + worktree | 독립 모듈만 병렬 개발. 공유 파일은 병렬 할당 금지 |
@@ -117,28 +169,36 @@ python skills/plain-words/scripts/check.py docs/*.md
 
 | 에이전트 | 역할 | 모델 | 격리 |
 |----------|------|------|------|
-| `code-reviewer` | 코드 리뷰 전문가 (읽기전용, 메모리 축적) | inherit | - |
+| `code-reviewer` | 코드 리뷰 전문가 (코드 비수정, `memory: project`라 memory 디렉터리에는 씀) | inherit | - |
 | `test-writer` | 테스트 생성 전문가 (C++/Python) | inherit | - |
 | `implementer` | 코드 구현 (worktree 격리) | inherit | worktree |
-| `architect` | 아키텍처/설계 분석 (읽기전용, 메모리 축적) | inherit | - |
-| `researcher` | 리서치 전문가 (웹 검색, 문서, 코드베이스) | inherit | - |
+| `architect` | 아키텍처/설계 분석 (코드 비수정, `memory: project`라 memory 디렉터리에는 씀) | inherit | - |
+| `researcher` | 리서치 전문가 (웹 검색, 문서, 코드베이스). 파일을 쓰지 않고 호출자에게 보고. Bash가 있어 도구 수준의 읽기 전용은 아님 | inherit | - |
 | `spec-writer` | 스펙 형식화 전문가 (요구사항→스펙, 코드→스펙 역추출) | inherit | - |
 | `spec-verifier` | 스펙 대비 검증 전문가 (skeptical 튜닝) | inherit | - |
 | `harness-tester` | harness 컴포넌트 검증 (hook/skill/agent/setting) | sonnet-4-6 | - |
 
-### Hooks (9개 소스, 기본 활성화 4개)
+### Hooks (8개 소스, 기본 활성화 4개)
 
 | 훅 | 이벤트 | 설명 |
 |----|--------|------|
 | vault-briefing | SessionStart | vault 요약 context. **선택형** — 관련 작업에서만 활성화 권장 |
-| prompt-hint | UserPromptSubmit | 짧고 모호한 프롬프트 구조 힌트. **선택형** |
-| plain-words-remind | UserPromptSubmit | 매 턴 문체 규칙 주입. **기본 활성화** — 긴 세션·compaction 뒤 drift 방지 |
-| block-dangerous | PreToolUse (Bash, `if` 1차 필터) | rm -rf, git push --force, DROP TABLE 등 차단 |
-| protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단 |
+| plain-words-remind | UserPromptSubmit | 매 턴 문체 규칙 주입. **기본 활성화** — 긴 세션·compaction 뒤 drift 방지 (timeout 5초) |
+| block-dangerous | PreToolUse (Bash) | `rm -rf`로 `/`·`/*`·`~`·`$HOME`·`.` 삭제, `git push -f/--force`, `git reset --hard`, `git clean -fd`, `DROP TABLE/DATABASE` 차단(exit 2). `/bin/rm`·`\rm`처럼 쓴 명령과 `sudo`·`env`·`nice`·`timeout` 래퍼 뒤의 명령도 본다. 따옴표 안 문자열(`echo "rm -rf /"`)은 막지 않고, `python -c`·변수로 만든 명령은 못 잡는다. 좁은 guardrail이며 native permissions를 대신하지 않는다. 입력 JSON을 해석하지 못하면 원시 입력으로 같은 검사를 하고, 위험 명령이 없으면 exit 1(non-blocking error)로 알린다 |
+| protect-sensitive | PreToolUse (Write/Edit) | .env, credentials, *.pem 등 수정 차단. jq가 없으면 검사 없이 통과하는 한계가 있다 |
 | auto-format | PostToolUse (Write/Edit) | formatter 자동 적용. **선택형** — 기본은 프로젝트 formatter/CI가 기준 |
-| pre-compact-save | PreCompact | transcript 백업. **선택형** — 개인정보·저장공간 검토 필요 |
-| subagent-stop-log | SubagentStop | 서브에이전트 활동 로그. **선택형** — 구조화된 관측 도구가 있을 때 권장 |
+| pre-compact-save | PreCompact | compaction 직전 원본 transcript 백업. **선택형** — 대화 전체가 들어 있으니 개인정보·저장공간 검토 필요. 위치: `${PIMP_MY_PRE_COMPACT_DIR:-~/.claude/pre-compact-backups}` (새로 만들 때 700, 파일 600. 이미 있던 디렉터리 권한은 바꾸지 않는다). 같은 이름이 있으면(동시 호출, symlink 포함) 덮어쓰거나 따라가지 않고 다른 이름으로 쓴다. Claude Code 세션 파일은 기본 30일 뒤 지워지므로 오래 남는 사본은 이것뿐이다 |
+| subagent-stop-log | SubagentStop | subagent 종료 이력(`agent_type`, `agent_id`, `hint=error-word`는 마지막 메시지의 단어 힌트일 뿐 판정 아님). 메시지 본문은 기록 안 함. **선택형**. 위치: `${PIMP_MY_LOG_DIR:-~/.claude/pimp-logs}/subagent-activity.log` (새로 만든 파일 600, 이미 있던 파일 권한은 그대로). 빈 값은 `unknown`으로 적는다 |
 | notify-done | Stop | 작업 완료 알림 (macOS/Linux/Windows) |
+
+`prompt-hint`는 이번 버전에서 소스에서 뺐다(짧은 승인 프롬프트에도 "질문 먼저"를 넣어 CLAUDE.md 규칙과 충돌).
+이미 등록했다면 `./setup.sh --upgrade-hooks`가 바인딩만 풀고 파일은 남긴다.
+
+pre-compact-save·subagent-stop-log는 예전에 vault의 `sessions/pre-compact/`, `sessions/subagent-activity.log`에 썼다.
+그 파일들은 옮기거나 지우지 않는다. `bin/vault-sync.sh`는 이 두 경로를 commit 대상으로 받지 않는다. 다만 이미
+commit됐거나 push되지 않은 채 남은 사본은 이 스크립트가 다루지 않으므로 vault에서 직접 확인한다. 새 vault의
+`.gitignore`에는 두 경로가 들어 있고, 기존 vault `.gitignore`는 자동으로 고치지 않는다.
+예전 위치를 계속 쓰려면 `PIMP_MY_PRE_COMPACT_DIR`, `PIMP_MY_LOG_DIR`를 지정한다(그 경우 git 제외는 직접 관리).
 
 ### statusLine
 
@@ -148,6 +208,7 @@ rate limits 세그먼트(`⏳ 5h NN%  7d NN%`)는 Claude.ai 구독 5시간 윈�
 글리프 표시에는 Nerd Font가 필요하다. 언어 세그먼트는 `Cargo.toml`·`package.json`·`go.mod` 같은 파일 존재만 보고
 `rustc`/`node`/`go`/`python3`를 실행하지 않는다(toolchain 자동 다운로드·작업 폴더가 고른 실행 파일 실행 방지).
 Claude Code는 workspace trust를 수락하기 전에는 statusLine을 실행하지 않는다.
+`settings.json`에 이미 다른 `statusLine`이 있으면 setup은 그 값을 바꾸지 않는다. 이 statusLine을 쓰려면 직접 바꾼다.
 이전 한 줄 형식(`vault Xd/Yl` 포함)으로 되돌리려면 `git show b6a362d:bin/statusline.sh > ~/.claude/bin/statusline.sh`.
 
 ### AGENTS.md (업계 표준 호환)
@@ -180,6 +241,8 @@ vault 경로: `$PIMP_MY_VAULT_DIR` 우선, Claude에서는 `$CLAUDE_VAULT_DIR`�
 - `--commit "<메시지>" -- <파일...>`는 나열한 vault 상대 경로 파일만 commit·push한다. 다른 staged/unstaged/untracked 변경은
   stash로 잠시 보호했다가 staged 상태까지 그대로 되돌리며, commit에도 push에도 섞이지 않는다.
 - 절대 경로, `..`, `.git` 안 경로, 디렉터리, 없는 파일은 저장소를 건드리기 전에 거부한다. glob·pathspec magic은 글자 그대로 취급한다.
+- `sessions/pre-compact/` 아래 파일과 `sessions/subagent-activity.log`(예전 hook이 남긴 원본 transcript·로그)도 거부한다.
+  이미 commit된 사본을 정리하지는 않는다.
 - 다음 경우에는 아무것도 commit·push하지 않고 중단한다: 다른 sync 실행 중(`.git/pimp-vault-sync.lock`), merge/rebase 진행 중,
   pull 실패, 로컬 변경 복원 충돌, 아직 push하지 않은 이전 로컬 commit이 있음(원격 브랜치가 아직 없을 때 기존 history 포함).
   이전 commit은 직접 검토해 `git push -u origin <branch>`로 한 번 올린 뒤 다시 실행한다.
@@ -238,7 +301,8 @@ MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니�
 ```
 ├── setup.sh                  원클릭 설치
 ├── init-project.sh           프로젝트별 rules/ + vault 프로젝트 초기화
-├── hooks/ (9개)              hook 스크립트 (기본 활성화: 문체·안전·완료 알림)
+├── hooks/ (8개)              hook 스크립트 (기본 활성화: 문체·안전·완료 알림)
+├── lib/                      설치 스크립트 공용 함수 (hook 병합·업그레이드)
 ├── bin/ (2개)                statusline, vault 자동 동기화 스크립트
 ├── skills/ (23개)            skill 정의
 ├── agents/ (8개)             custom agent 정의
@@ -253,7 +317,7 @@ MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니�
 ## 요구사항
 
 - Claude Code v2.1.32+
-- `jq` (settings.json 병합, 선택)
+- `jq` (settings.json 병합·`--upgrade-hooks`, 선택)
 - Python 3.10+ (--with-mcp, --with-sdk 사용 시)
 - `gh` CLI (PR 리뷰용, 선택)
 

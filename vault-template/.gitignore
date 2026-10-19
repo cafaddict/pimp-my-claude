@@ -11,6 +11,10 @@
 *.db
 *.npy
 
+# Hook output that holds raw conversations or local logs (never sync these)
+sessions/pre-compact/
+sessions/subagent-activity.log
+
 # OS
 .DS_Store
 Thumbs.db

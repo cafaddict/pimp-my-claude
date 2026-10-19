@@ -7,7 +7,7 @@
 ```
 vault/
 ├── projects/       프로젝트별 지식
-├── sessions/       Claude Code 세션 기록 (자동 생성)
+├── sessions/       Claude Code 세션 기록 (`/vault-save` 요청 시)
 ├── areas/          지속 관리 영역 (커리어, 기술 스택, 학습 등)
 ├── resources/      참고 자료, 리서치 보고서
 ├── decisions/      ADR (아키텍처 의사결정 기록)

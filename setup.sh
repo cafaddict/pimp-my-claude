@@ -1,6 +1,9 @@
 #!/bin/bash
 # Claude Code 환경 부트스트랩
 # 사용법: git clone <repo> && cd pimp-my-claude && ./setup.sh [옵션]
+#
+# 다시 실행해도 기존 설정이 우선이다. 직접 고친 설치본, 외부 hook handler, statusLine은
+# 덮어쓰지 않는다. 설치된 hook 정의·스크립트를 바꾸는 일은 --upgrade-hooks 때만 한다.
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -9,7 +12,11 @@ INSTALL_SDK=false
 INSTALL_VAULT=false
 INSTALL_MCP=false
 FORCE_CLAUDE_MD=false
+UPGRADE_HOOKS=false
+DRY_RUN=false
 VAULT_DIR="${PIMP_MY_VAULT_DIR:-${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}}"
+# source에서 뺀 hook. 설치된 파일은 지우지 않고, --upgrade-hooks 때만 바인딩을 푼다.
+RETIRED_HOOKS=(prompt-hint)
 
 for arg in "$@"; do
   case "$arg" in
@@ -18,6 +25,8 @@ for arg in "$@"; do
     --with-mcp)   INSTALL_MCP=true ;;
     --all)        INSTALL_SDK=true; INSTALL_VAULT=true; INSTALL_MCP=true ;;
     --force-claude-md) FORCE_CLAUDE_MD=true ;;
+    --upgrade-hooks) UPGRADE_HOOKS=true ;;
+    --dry-run)    DRY_RUN=true ;;
     --help|-h)
       echo "사용법: ./setup.sh [옵션]"
       echo ""
@@ -27,6 +36,9 @@ for arg in "$@"; do
       echo "  --with-mcp         MCP 시맨틱 검색 서버 설치 (fastembed + sqlite-vec)"
       echo "  --all              위 3개 전부 설치"
       echo "  --force-claude-md  CLAUDE.md 덮어쓰기 (기존 백업 후 교체)"
+      echo "  --upgrade-hooks    설치된 hook 정의·스크립트를 현재 템플릿으로 갱신 (diff 출력, 백업 후 적용)"
+      echo "                     이 작업만 하고 끝난다. 직접 고친 정의·파일은 보류하고 보고한다."
+      echo "  --dry-run          --upgrade-hooks와 함께: 바뀔 내용만 보여 주고 아무것도 쓰지 않음"
       echo "  --help             이 도움말 표시"
       echo ""
       echo "환경변수:"
@@ -34,8 +46,152 @@ for arg in "$@"; do
       echo "  CLAUDE_VAULT_DIR  Claude 호환 vault 경로"
       exit 0
       ;;
+    *)
+      echo "알 수 없는 옵션: $arg (./setup.sh --help 참고)" >&2
+      exit 2
+      ;;
   esac
 done
+if [ "$DRY_RUN" = true ] && [ "$UPGRADE_HOOKS" = false ]; then
+  echo "--dry-run은 --upgrade-hooks와 함께 씁니다." >&2
+  exit 2
+fi
+
+# shellcheck source=lib/install-lib.sh
+source "$SCRIPT_DIR/lib/install-lib.sh"
+
+SETTINGS="$CLAUDE_DIR/settings.json"
+TEMPLATE="$SCRIPT_DIR/settings-template.json"
+BACKUP_PARENT="$CLAUDE_DIR/pimp-my-claude-backups"
+SCRIPT_DIR_REPL="$(pimp_sed_repl "$SCRIPT_DIR")"
+HELD=()
+
+is_retired() {
+  local r
+  for r in "${RETIRED_HOOKS[@]}"; do [ "$1" = "$r" ] && return 0; done
+  return 1
+}
+render_repo_dir() { sed "s|{{REPO_DIR}}|$SCRIPT_DIR_REPL|g"; }
+retired_json() {
+  local r
+  # shellcheck disable=SC2088  # literal "~/" as written in settings.json
+  for r in "${RETIRED_HOOKS[@]}"; do printf '~/.claude/hooks/%s.sh\n' "$r"; done | jq -R . | jq -s .
+}
+
+# 아래 검사는 모두 파일을 쓰기 전에 한다. 하나라도 걸리면 아무것도 바꾸지 않고 멈춘다.
+# skill 본문의 실행 줄에 레포 경로가 따옴표 없이 들어가므로, 그대로 실행할 수 없는 경로는 거부한다.
+if [ "$UPGRADE_HOOKS" = false ] && ! pimp_shell_safe_path "$SCRIPT_DIR"; then
+  echo "✗ 레포 경로에 공백이나 셸 특수문자가 있습니다: $SCRIPT_DIR" >&2
+  echo "  skill의 실행 명령이 이 경로를 그대로 쓰므로 설치하지 않았습니다(아무것도 바꾸지 않음)." >&2
+  echo "  공백·특수문자가 없는 경로로 clone한 뒤 다시 실행하세요." >&2
+  exit 2
+fi
+# symlink(예: dotfiles)인 settings.json은 일반 파일로 바꿔 버리지 않도록 손대지 않는다.
+if [ -L "$SETTINGS" ]; then
+  echo "✗ $SETTINGS 는 symlink입니다($(readlink "$SETTINGS")). 연결을 끊지 않도록 아무것도 바꾸지 않았습니다." >&2
+  echo "  병합하려면 symlink 대상 파일을 직접 편집하세요(템플릿: $TEMPLATE)." >&2
+  exit 1
+fi
+# 기존 settings.json이 깨져 있거나 hooks 구조를 해석할 수 없으면 멈춘다.
+if [ -f "$SETTINGS" ] && command -v jq &>/dev/null && ! jq empty "$SETTINGS" 2>/dev/null; then
+  echo "✗ $SETTINGS 가 올바른 JSON이 아닙니다. 고친 뒤 다시 실행하세요. (아무것도 바꾸지 않았습니다)" >&2
+  exit 1
+fi
+if [ -f "$SETTINGS" ] && command -v jq &>/dev/null && ! pimp_hooks_readable "$SETTINGS" "$TEMPLATE"; then
+  echo "✗ $SETTINGS 의 hooks 구조를 해석하지 못했습니다. 고친 뒤 다시 실행하세요. (아무것도 바꾸지 않았습니다)" >&2
+  exit 1
+fi
+
+# --upgrade-hooks: 설치된 hook 바인딩·스크립트만 현재 템플릿으로 맞춘다.
+upgrade_hooks() {
+  local work known settings_changed=false f name dest replace=() held=() restore
+  command -v jq &>/dev/null || { echo "✗ --upgrade-hooks에는 jq가 필요합니다." >&2; exit 1; }
+  [ -f "$SETTINGS" ] || { echo "✗ $SETTINGS 가 없습니다. 먼저 ./setup.sh 를 실행하세요." >&2; exit 1; }
+  work="$(mktemp -d "${TMPDIR:-/tmp}/pimp-upgrade.XXXXXX")"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$work'" EXIT
+
+  known="$(pimp_known_handlers settings-template.json)"
+  if ! pimp_merge_hooks "$SETTINGS" "$TEMPLATE" upgrade "$known" "$(retired_json)" \
+    "$work/settings.json" "$work/report.json"; then
+    echo "✗ settings.json의 hooks 구조를 해석하지 못했습니다. 아무것도 바꾸지 않았습니다." >&2
+    exit 1
+  fi
+  pimp_same_json "$SETTINGS" "$work/settings.json" || settings_changed=true
+
+  for f in "$SCRIPT_DIR/hooks/"*.sh; do
+    name="$(basename "$f" .sh)"
+    is_retired "$name" && continue
+    dest="$CLAUDE_DIR/hooks/$name.sh"
+    case "$(pimp_classify "$f" "$dest" "hooks/$name.sh")" in
+      missing|shipped) replace+=("$name") ;;
+      modified) held+=("$name") ;;
+    esac
+  done
+
+  echo "=== --upgrade-hooks: $SETTINGS ==="
+  pimp_print_report "$work/report.json"
+  if [ "$settings_changed" = true ]; then
+    diff -u "$SETTINGS" "$work/settings.json" || true
+  fi
+  for name in "${replace[@]}"; do
+    dest="$CLAUDE_DIR/hooks/$name.sh"
+    echo "hook 파일 갱신: $dest"
+    if [ -f "$dest" ]; then diff -u "$dest" "$SCRIPT_DIR/hooks/$name.sh" || true; else echo "  (새 파일)"; fi
+  done
+  for name in "${held[@]}"; do
+    echo "⚠ 보류: $CLAUDE_DIR/hooks/$name.sh 는 직접 고친 파일이라 그대로 둡니다. 비교: diff -u '$CLAUDE_DIR/hooks/$name.sh' '$SCRIPT_DIR/hooks/$name.sh'"
+  done
+  jq -r '[.hooks // {} | to_entries[] | .key as $e | .value[]? | (.hooks // [])[]
+          | select((.timeout // 0) > 600) | "\($e): \(.command // "?") timeout=\(.timeout)"] | .[]
+          | "ℹ timeout 단위는 초입니다. 확인 권장(자동 수정 안 함): \(.)"' "$work/settings.json"
+
+  if [ "$settings_changed" = false ] && [ "${#replace[@]}" -eq 0 ]; then
+    echo "✓ 변경 없음"
+    return 0
+  fi
+  if [ "$DRY_RUN" = true ]; then
+    echo "(--dry-run) 아무것도 바꾸지 않았습니다."
+    return 0
+  fi
+
+  BACKUP_DIR="$(pimp_new_backup_dir "$BACKUP_PARENT")"
+  restore="$BACKUP_DIR/restore-commands.txt"
+  echo "# pimp-my-claude --upgrade-hooks 되돌리기. 아래 명령을 그대로 실행한다." > "$restore"
+  for name in "${replace[@]}"; do
+    dest="$CLAUDE_DIR/hooks/$name.sh"
+    if [ -f "$dest" ]; then
+      mkdir -p "$BACKUP_DIR/hooks"
+      cp -p "$dest" "$BACKUP_DIR/hooks/$name.sh"
+      cmp -s "$dest" "$BACKUP_DIR/hooks/$name.sh"
+      printf 'cp -p %q %q\n' "$BACKUP_DIR/hooks/$name.sh" "$dest" >> "$restore"
+    else
+      printf '# 새로 설치됨(필요 없으면 직접 삭제): %q\n' "$dest" >> "$restore"
+    fi
+  done
+  if [ "$settings_changed" = true ]; then
+    cp -p "$SETTINGS" "$BACKUP_DIR/settings.json"
+    cmp -s "$SETTINGS" "$BACKUP_DIR/settings.json"
+    printf 'cp -p %q %q\n' "$BACKUP_DIR/settings.json" "$SETTINGS" >> "$restore"
+  fi
+
+  mkdir -p "$CLAUDE_DIR/hooks"
+  for name in "${replace[@]}"; do
+    pimp_install_file "$SCRIPT_DIR/hooks/$name.sh" "$CLAUDE_DIR/hooks/$name.sh" 755
+  done
+  if [ "$settings_changed" = true ]; then
+    pimp_install_file "$work/settings.json" "$SETTINGS" "$(stat -c %a "$SETTINGS" 2>/dev/null || stat -f %Lp "$SETTINGS")"
+  fi
+  echo "✓ hook 갱신 완료. 백업: $BACKUP_DIR"
+  echo "되돌리기 ($restore):"
+  grep -v '^#' "$restore" | sed 's/^/  /'
+  echo "설치된 스크립트 파일은 지우지 않았습니다. 새 Claude Code 세션부터 적용됩니다."
+}
+
+if [ "$UPGRADE_HOOKS" = true ]; then
+  upgrade_hooks
+  exit 0
+fi
 
 echo "=== Claude Code 환경 설정 ==="
 echo ""
@@ -43,29 +199,62 @@ echo ""
 # 1. 필수 디렉토리 생성
 mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/rules" "$CLAUDE_DIR/bin"
 
-# 2. hooks 복사 + 실행 권한
-cp "$SCRIPT_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/"
-chmod +x "$CLAUDE_DIR/hooks/"*.sh
-echo "✓ Hooks 설치 ($(ls "$SCRIPT_DIR/hooks/"*.sh | wc -l | tr -d ' ')개, 기본 활성화 3개)"
+# install_managed <new-file> <dest> <repo-path> <mode> <policy> [render...]
+# policy "refresh": 예전 배포본이면 교체. policy "hold": 예전 배포본도 유지(--upgrade-hooks 몫).
+# 직접 고친 파일은 어느 쪽이든 그대로 두고 HELD에 적는다.
+PENDING=()
+install_managed() {
+  local new="$1" dest="$2" path="$3" mode="$4" policy="$5"
+  shift 5
+  case "$(pimp_classify "$new" "$dest" "$path" "$@")" in
+    missing) pimp_install_file "$new" "$dest" "$mode" ;;
+    current) ;;
+    shipped)
+      if [ "$policy" = refresh ]; then pimp_install_file "$new" "$dest" "$mode"
+      else PENDING+=("$dest"); fi
+      ;;
+    modified) HELD+=("$dest") ;;
+  esac
+}
+
+# 2. hooks 복사 — 이미 설치된 hook 스크립트는 --upgrade-hooks 때만 바꾼다
+HOOK_COUNT=0
+for f in "$SCRIPT_DIR/hooks/"*.sh; do
+  name="$(basename "$f" .sh)"
+  is_retired "$name" && continue
+  HOOK_COUNT=$((HOOK_COUNT + 1))
+  install_managed "$f" "$CLAUDE_DIR/hooks/$name.sh" "hooks/$name.sh" 755 hold
+done
+ACTIVE_COUNT="$(jq '[.hooks[][].hooks[]] | length' "$TEMPLATE" 2>/dev/null || echo "?")"
+echo "✓ Hooks 설치 (${HOOK_COUNT}개, 기본 활성화 ${ACTIVE_COUNT}개)"
+if [ "${#PENDING[@]}" -gt 0 ]; then
+  echo "  ⚠ 새 버전이 있지만 기존 설치본을 유지한 hook ${#PENDING[@]}개 — 검토: ./setup.sh --upgrade-hooks --dry-run"
+fi
 
 # 2-1. bin 스크립트 복사 (statusline 등)
 if [ -d "$SCRIPT_DIR/bin/" ] && ls "$SCRIPT_DIR/bin/"*.sh &>/dev/null; then
-  cp "$SCRIPT_DIR/bin/"*.sh "$CLAUDE_DIR/bin/"
-  chmod +x "$CLAUDE_DIR/bin/"*.sh
+  for f in "$SCRIPT_DIR/bin/"*.sh; do
+    install_managed "$f" "$CLAUDE_DIR/bin/$(basename "$f")" "bin/$(basename "$f")" 755 refresh
+  done
   echo "✓ Bin 스크립트 설치 ($(ls "$SCRIPT_DIR/bin/"*.sh | wc -l | tr -d ' ')개)"
 fi
 
 # 3. skills 복사
+RENDER_TMP="$(mktemp "${TMPDIR:-/tmp}/pimp-skill.XXXXXX")"
 for d in "$SCRIPT_DIR/skills/"/*/; do
   skill_name=$(basename "$d")
   mkdir -p "$CLAUDE_DIR/skills/$skill_name"
-  sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$d"SKILL.md > "$CLAUDE_DIR/skills/$skill_name/SKILL.md"
+  render_repo_dir < "$d"SKILL.md > "$RENDER_TMP"
+  install_managed "$RENDER_TMP" "$CLAUDE_DIR/skills/$skill_name/SKILL.md" "skills/$skill_name/SKILL.md" 644 refresh render_repo_dir
 done
+rm -f "$RENDER_TMP"
 echo "✓ Skills 설치 ($(ls -d "$SCRIPT_DIR/skills/"*/ | wc -l | tr -d ' ')개)"
 
 # 3-1. agents 복사
 if [ -d "$SCRIPT_DIR/agents/" ] && ls "$SCRIPT_DIR/agents/"*.md &>/dev/null; then
-  cp "$SCRIPT_DIR/agents/"*.md "$CLAUDE_DIR/agents/"
+  for f in "$SCRIPT_DIR/agents/"*.md; do
+    install_managed "$f" "$CLAUDE_DIR/agents/$(basename "$f")" "agents/$(basename "$f")" 644 refresh
+  done
   echo "✓ Agents 설치 ($(ls "$SCRIPT_DIR/agents/"*.md | wc -l | tr -d ' ')개)"
 fi
 
@@ -73,7 +262,7 @@ fi
 GLOBAL_RULES=""
 for r in vault-notes plain-words; do
   if [ -f "$SCRIPT_DIR/rules-templates/$r.md" ]; then
-    cp "$SCRIPT_DIR/rules-templates/$r.md" "$CLAUDE_DIR/rules/"
+    install_managed "$SCRIPT_DIR/rules-templates/$r.md" "$CLAUDE_DIR/rules/$r.md" "rules-templates/$r.md" 644 refresh
     GLOBAL_RULES="$GLOBAL_RULES $r"
   fi
 done
@@ -81,45 +270,52 @@ if [ -n "$GLOBAL_RULES" ]; then
   echo "✓ Global rules 설치 ($(echo $GLOBAL_RULES | sed 's/^ //; s/ /, /g'))"
 fi
 
-# 4. settings.json 병합
-if [ -f "$CLAUDE_DIR/settings.json" ]; then
+if [ "${#HELD[@]}" -gt 0 ]; then
+  echo "⚠ 직접 고친 것으로 보이는 설치본 ${#HELD[@]}개는 덮어쓰지 않았습니다:"
+  for f in "${HELD[@]}"; do echo "    $f"; done
+  echo "  source 버전으로 바꾸려면 그 파일을 따로 백업한 뒤 지우고 ./setup.sh 를 다시 실행하세요."
+fi
+
+# 4. settings.json 병합 — 기존 값이 우선. 같은 command가 이미 있으면 템플릿 handler를 더하지 않는다.
+if [ -f "$SETTINGS" ]; then
   if command -v jq &>/dev/null; then
-    jq -s '
-      .[0] as $existing | .[1] as $template |
-      ($existing * $template)
-      | .permissions.additionalDirectories = (
-          (($existing.permissions.additionalDirectories // [])
-          + ($template.permissions.additionalDirectories // [])) | unique
-        )
-      | .hooks = (
-          ($template.hooks // {}) as $template_hooks |
-          reduce (($existing.hooks // {}) | keys_unsorted[]) as $event
-            ($template_hooks;
-              .[$event] = ((($existing.hooks[$event] // []) + (.[$event] // [])) | unique_by(tojson))
-            )
-        )
-    ' "$CLAUDE_DIR/settings.json" "$SCRIPT_DIR/settings-template.json" \
-      > "$CLAUDE_DIR/settings.json.tmp" \
-      && mv "$CLAUDE_DIR/settings.json.tmp" "$CLAUDE_DIR/settings.json"
-    echo "✓ settings.json 병합 (기존 배열·hook 보존)"
-    if jq -e '[
-      .hooks.UserPromptSubmit[]?.hooks[]?.command // "",
-      .hooks.SessionStart[]?.hooks[]?.command // "",
-      .hooks.PostToolUse[]?.hooks[]?.command // "",
-      .hooks.PreCompact[]?.hooks[]?.command // "",
-      .hooks.SubagentStop[]?.hooks[]?.command // ""
-    ] | any(test("prompt-hint|vault-briefing|auto-format|pre-compact-save|subagent-stop-log"))' \
-      "$CLAUDE_DIR/settings.json" >/dev/null; then
+    MERGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/pimp-merge.XXXXXX")"
+    if ! pimp_merge_hooks "$SETTINGS" "$TEMPLATE" merge '[]' "$(retired_json)" \
+      "$MERGE_DIR/settings.json" "$MERGE_DIR/report.json"; then
+      rm -rf "$MERGE_DIR"
+      echo "✗ settings.json의 hooks 구조를 해석하지 못해 병합하지 않았습니다(파일은 그대로). 고친 뒤 다시 실행하세요." >&2
+      exit 1
+    fi
+    if pimp_same_json "$SETTINGS" "$MERGE_DIR/settings.json"; then
+      echo "✓ settings.json 변경 없음 (기존 설정 우선)"
+    else
+      BACKUP_DIR="$(pimp_new_backup_dir "$BACKUP_PARENT")"
+      cp -p "$SETTINGS" "$BACKUP_DIR/settings.json"
+      pimp_install_file "$MERGE_DIR/settings.json" "$SETTINGS" "$(stat -c %a "$SETTINGS" 2>/dev/null || stat -f %Lp "$SETTINGS")"
+      echo "✓ settings.json 병합 (기존 값·hook·statusLine 우선, 백업: $BACKUP_DIR/settings.json)"
+    fi
+    pimp_print_report "$MERGE_DIR/report.json"
+    if jq -e '.differs | length > 0' "$MERGE_DIR/report.json" >/dev/null; then
+      echo "  → 템플릿과 다른 hook 정의는 그대로 두었습니다. 검토: ./setup.sh --upgrade-hooks --dry-run"
+    fi
+    rm -rf "$MERGE_DIR"
+    if jq -e '[.hooks // {} | .[][]? | (.hooks // [])[] | .command // ""]
+      | any(test("prompt-hint|vault-briefing|auto-format|pre-compact-save|subagent-stop-log"))' \
+      "$SETTINGS" >/dev/null; then
       echo "⚠ 기존 선택형 context/automation hook은 보존되었습니다. 필요 없으면 settings.json에서 직접 제거하세요."
+      echo "  pre-compact-save·subagent-stop-log 현재 버전은 vault 밖(~/.claude/pre-compact-backups, ~/.claude/pimp-logs)에 씁니다."
+      echo "  설치된 스크립트가 예전 버전이면 ./setup.sh --upgrade-hooks 를 실행해야 바뀝니다(그 전에는 예전 위치에 씀)."
+      echo "  기존 vault의 .gitignore에는 sessions/pre-compact/, sessions/subagent-activity.log 추가를 권장합니다(자동 수정 안 함)."
     fi
   else
     echo "⚠ jq 미설치 — settings.json 병합 건너뜀"
     echo "  수동: $SCRIPT_DIR/settings-template.json 참고"
   fi
 else
-  cp "$SCRIPT_DIR/settings-template.json" "$CLAUDE_DIR/settings.json"
+  cp "$SCRIPT_DIR/settings-template.json" "$SETTINGS"
   echo "✓ settings.json 생성"
 fi
+
 
 # 5. CLAUDE.md
 if [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ "$FORCE_CLAUDE_MD" = false ]; then

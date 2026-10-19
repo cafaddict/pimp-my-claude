@@ -18,7 +18,7 @@ effort: high
 > [!tip] `/vault-promote`와의 관계 (living-config의 들숨/날숨)
 > `/vault-promote` = 지식을 규칙으로 **들인다**(lessons → rules, 추가). `/config-review` = 낡은 규칙을 **정리한다**(prune/dedup/reroute, 제거). 둘이 한 사이클을 이룬다.
 
-기본은 **읽기 전용 리포트**다. `--apply`가 있을 때만 변경하며, **삭제는 항상 사용자 승인**을 받는다.
+기본은 **읽기 전용 리포트**다. 파일을 하나도 쓰지 않는다(마커 포함). `--apply`가 있을 때만 변경하며, **삭제는 항상 사용자 승인**을 받는다.
 
 ### Phase 0 — SCOPE
 점검 대상 결정:
@@ -62,12 +62,14 @@ effort: high
 3. **hook 승격 후보는 직접 만들지 마라** — `/harness`로 인계(harness가 build-loop·배포·README 동기화 담당). 역할 침범 금지.
 4. **~/.claude/ 의 hook/skill을 수정하면 pimp-my-claude 레포에도 반영 + README 업데이트** (소스 = 레포).
 
-### Phase 5 — 마커 갱신
-점검 완료 시(리포트만 냈어도) staleness 넛지용 마커를 갱신:
+### Phase 5 — 마커 갱신 (`--apply`를 실행했거나 사용자가 승인했을 때만)
+리포트만 낸 경우에는 쓰지 않는다. 리포트 끝에 "점검 완료로 표시할까요?"라고 묻고, 사용자가 승인하거나
+`--apply`로 변경을 적용했을 때만 vault **밖**의 마커를 갱신한다:
 ```bash
-date +%s > "${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}/.config-review-stamp"
+date +%s > "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.config-review-stamp"
 ```
-이로써 vault-briefing의 분기 넛지 타이머가 리셋된다.
+이로써 vault-briefing의 분기 넛지 타이머가 리셋된다. 예전 위치(vault 루트의 `.config-review-stamp`)는
+vault-briefing이 새 마커가 없을 때 읽기만 하며, 이 skill은 그 파일을 고치거나 지우지 않는다.
 
 ### 주의
 - 기본은 제안만. 파괴적 변경(삭제)은 승인 게이트 필수.
