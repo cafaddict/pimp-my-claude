@@ -206,7 +206,8 @@ commit됐거나 push되지 않은 채 남은 사본은 이 스크립트가 다�
 
 ### statusLine
 
-Starship 프롬프트 재현 — 터미널 하단에 powerline 세그먼트(user · directory · git branch/status · language · docker · time · model · ctx% · rate limits)를 Starship pastel-powerline 계열 고정 색상으로 표시.
+Starship 프롬프트 재현 — 터미널 하단에 powerline 세그먼트(user · directory · git branch/status · language · docker · time · model·effort · ctx% · rate limits)를 Starship pastel-powerline 계열 고정 색상으로 표시.
+model 세그먼트는 현재 세션의 reasoning effort를 함께 표시(`🤖 Opus · high`) — 모델이 effort를 보고하지 않으면 생략.
 `~/.claude/bin/statusline.sh`에 설치. 끝의 model/ctx% 세그먼트는 `/compact` 선제 실행 타이밍 판단용.
 rate limits 세그먼트(`⏳ 5h NN%  7d NN%`)는 Claude.ai 구독 5시간 윈도우/주간 사용률 — 정보 없으면 자동 생략.
 글리프 표시에는 Nerd Font가 필요하다. 언어 세그먼트는 `Cargo.toml`·`package.json`·`go.mod` 같은 파일 존재만 보고

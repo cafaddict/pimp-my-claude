@@ -129,7 +129,13 @@ TIME_TEXT=" ♥ $(date +%R) "
 # ---- model (bg #4C3B6E) — Claude Code 세션의 현재 모델 -------------------------
 MODEL_NAME=$(echo "$INPUT" | jq -r '.model.display_name // .model.id // empty' 2>/dev/null)
 MODEL_TEXT=""
-[ -n "$MODEL_NAME" ] && MODEL_TEXT=" 🤖 ${MODEL_NAME} "
+# effort.level은 모델이 reasoning effort를 지원할 때만 존재 → 없으면 생략.
+EFFORT_LEVEL=$(echo "$INPUT" | jq -r '.effort.level // empty' 2>/dev/null)
+if [ -n "$MODEL_NAME" ]; then
+  MODEL_TEXT=" 🤖 ${MODEL_NAME}"
+  [ -n "$EFFORT_LEVEL" ] && MODEL_TEXT+=" · ${EFFORT_LEVEL}"
+  MODEL_TEXT+=" "
+fi
 
 # ---- context usage (bg #8E44AD) — 컨텍스트 윈도우 사용률 ----------------------
 # 우선 context_window.used_percentage(사전 계산된 값)를 쓰고, 옛 스키마 호환을
