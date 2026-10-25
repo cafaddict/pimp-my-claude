@@ -69,6 +69,11 @@ done
 frontmatter "$AGENTS_HOME/skills/vault-daily/SKILL.md" | rg '^description:' | refute rg -F '마무리'
 body "$AGENTS_HOME/skills/vault-daily/SKILL.md" | rg -F '"마무리", "오늘 여기까지" 같은 말만으로는 시작하지 말고' >/dev/null
 body "$AGENTS_HOME/skills/vault-daily/SKILL.md" | rg -F '사용자가 요청·승인한 daily 작업이면' >/dev/null
+# Team skills and agents only propose vault notes; the write waits for the user's request or approval.
+for f in skills/debug-team/SKILL.md skills/review-team/SKILL.md skills/taskloop/SKILL.md skills/sdd/SKILL.md agents/architect.md; do
+  rg -F '사용자가 요청·승인한 경우에만' "$REPO_DIR/$f" >/dev/null
+done
+refute rg 'vault-note 스킬로 vault .*기록하라|\(note 스킬\)|/note로' "$REPO_DIR/skills" "$REPO_DIR/agents"
 
 CODEX_VAULT="$TEST_DIR/codex-vault"
 HOME="$TEST_DIR/codex-vault-home" CODEX_HOME="$TEST_DIR/codex-vault-config" AGENTS_HOME="$TEST_DIR/codex-vault-agents" \

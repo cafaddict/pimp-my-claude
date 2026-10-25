@@ -85,7 +85,7 @@ Parallel 모드: 모듈별 implementer를 `isolation: worktree`로 병렬 실행
 
 최종 보고 형식: spec ID/version, status, iterations N/max, 최종 verdict, 변경 파일 목록, iteration 히스토리 표 (`# | Verdict | 주요 피드백`). 히스토리는 `.verified-*.md`에서 구성.
 
-**Vault 통합** (note 스킬):
+**Vault 기록 제안** (`/vault-note`, 사용자가 요청·승인한 경우에만 기록):
 - 최종 스펙 → `vault/projects/<project>/specs/<spec-id>.md`에 보관
 - iteration > 1이면 재작업 원인을 `vault/lessons/`에 기록
 - 사용자가 FAIL 오버라이드하면 `vault/areas/harness-engineering/evaluator-calibration.md`에 기록
@@ -164,7 +164,7 @@ Phase 2와 동일하나 다음을 강조:
 
 Verify를 실행한 경우: 갭 분석 결과 요약 (테스트 커버리지 비율, 미테스트 행위 목록).
 
-**Vault 통합** (note 스킬):
+**Vault 기록 제안** (`/vault-note`, 사용자가 요청·승인한 경우에만 기록):
 - 최종 스펙 → `vault/projects/<project>/specs/<spec-id>.md`에 보관
 - 갭 분석 결과가 significant하면 → `vault/lessons/`에 기록
 - Baseline + Forward SDD 선택 시 → `vault/decisions/`에 리팩토링 결정 기록

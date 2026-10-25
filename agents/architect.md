@@ -54,14 +54,14 @@ When invoked:
 ```
 
 ## Vault 기록용 요약
-분석 완료 후, 아래 형식의 요약도 함께 반환하라 (호출자가 vault에 기록):
+분석 완료 후, 아래 형식의 요약도 함께 반환하라 (사용자가 요청·승인하면 호출자가 vault에 기록):
 ```
 vault-summary:
   type: decision 또는 resource
   title: <한 줄 제목>
   content: <핵심 발견 2-3줄>
 ```
-호출하는 skill/사용자가 이 요약을 /note로 vault에 기록한다.
+호출자는 사용자가 요청·승인한 경우에만 이 요약을 `/vault-note`로 기록한다.
 직접 vault에 파일을 쓰지 마라.
 
 ## Rules
