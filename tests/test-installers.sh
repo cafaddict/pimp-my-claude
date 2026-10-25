@@ -76,14 +76,39 @@ done
 refute rg 'vault-note 스킬로 vault .*기록하라|\(note 스킬\)|/note로' "$REPO_DIR/skills" "$REPO_DIR/agents"
 # Claude Code ignores unknown skill frontmatter keys silently, so only documented fields may appear.
 known_keys='^(name|description|when_to_use|argument-hint|arguments|disable-model-invocation|user-invocable|allowed-tools|disallowed-tools|model|effort|context|agent|background|hooks|paths|shell|metadata|license|compatibility)$'
+# A forked skill that takes arguments (declares `argument-hint` or `arguments`) must use the full
+# $ARGUMENTS placeholder. Claude Code appends `ARGUMENTS: <input>` only when no placeholder receives an
+# argument, so once $0 or a named argument is filled the rest of the typed text is dropped, and a forked
+# subagent cannot see the conversation. Indexed forms such as $ARGUMENTS[0] do not carry the full text.
+is_fork() { frontmatter "$1" | rg -q "^[[:space:]]*context[[:space:]]*:[[:space:]]*[\"']?fork[\"']?[[:space:]]*(#.*)?$"; }
+takes_arguments() { frontmatter "$1" | rg -q '^[[:space:]]*(argument-hint|arguments)[[:space:]]*:'; }
+has_full_arguments() { body "$1" | rg -q '\$ARGUMENTS([^\[A-Za-z0-9_]|$)'; }
+fork_arguments_ok() {
+  is_fork "$1" && takes_arguments "$1" || return 0
+  has_full_arguments "$1"
+}
 for f in "$REPO_DIR"/skills/*/SKILL.md; do
   frontmatter "$f" | sed -n 's/^\([A-Za-z_-]*\):.*/\1/p' | while read -r key; do
     printf '%s\n' "$key" | rg -q "$known_keys" || { echo "unknown frontmatter key '$key' in $f" >&2; exit 1; }
   done
-  # A forked skill only receives the text after /skill when its body references $ARGUMENTS.
-  if frontmatter "$f" | rg -qx 'context: fork'; then
-    body "$f" | rg -qF '$ARGUMENTS' || { echo "context: fork without \$ARGUMENTS in $f" >&2; exit 1; }
-  fi
+  fork_arguments_ok "$f" || { echo "forked skill takes arguments but has no \$ARGUMENTS: $f" >&2; exit 1; }
+done
+FORK_CASES="$TEST_DIR/fork-cases"
+mkdir -p "$FORK_CASES"
+fork_case() { printf -- '---\nname: case\ndescription: case\n%s\n---\n%s\n' "$2" "$3" > "$FORK_CASES/$1.md"; }
+fork_case double-quoted $'context: "fork"\nargument-hint: "[pr]"' 'Review PR $0.'
+fork_case single-quoted $'context: \'fork\'  \nargument-hint: "[pr]"' 'Review PR $0.'
+fork_case spaced $'  context :   fork   # isolated\nargument-hint: "[pr]"' 'Review PR $0.'
+fork_case named-only $'context: fork\narguments: [pr]' 'Review PR $pr.'
+fork_case indexed-only $'context: fork\nargument-hint: "[pr]"' 'Review PR $ARGUMENTS[0].'
+fork_case no-arguments $'context: fork' 'Summarize the repository layout.'
+fork_case full-arguments $'context: "fork"\nargument-hint: "[pr]"' 'Review PR $0. Request: $ARGUMENTS'
+fork_case inline $'argument-hint: "[pr]"' 'Review PR $0.'
+for c in double-quoted single-quoted spaced named-only indexed-only; do
+  if fork_arguments_ok "$FORK_CASES/$c.md"; then echo "fork case '$c' should be rejected" >&2; exit 1; fi
+done
+for c in no-arguments full-arguments inline; do
+  fork_arguments_ok "$FORK_CASES/$c.md" || { echo "fork case '$c' should pass" >&2; exit 1; }
 done
 
 CODEX_VAULT="$TEST_DIR/codex-vault"

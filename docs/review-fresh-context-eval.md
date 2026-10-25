@@ -27,8 +27,9 @@ pair 3개, pair 안 순서는 무작위.
 
 **1차 (사전 규칙대로 채점):** 기존(inline) anchored 6/6, unanchored 6/6. fork 0/6, 0/6.
 fork 실행군은 FINDING 줄을 하나도 쓰지 않았다. forked subagent가 받은 prompt에 `/review` 뒤의 문장이 없었다.
-**본문에 `$ARGUMENTS`가 없는 `context: fork` skill은 사용자 인자를 subagent에 넘기지 않는다**(본문의 `$0`
-치환만 된다). 결과를 본 뒤 사람이 읽은 판독으로는 fork 리뷰 3개 모두 결함 4개를 본문에 보고했다.
+review skill은 `!` 명령 안의 `$0`이 첫 인자를 받는다. 공식 skills 문서상 자리 표시자가 인자를 받으면
+`ARGUMENTS: <입력>`을 덧붙이지 않으므로, **인자를 받는 `context: fork` skill은 본문에 `$ARGUMENTS`가 없으면 나머지 요청이
+subagent에 전달되지 않는다**(대화를 볼 수 없으므로). 결과를 본 뒤 사람이 읽은 판독으로는 fork 리뷰 3개 모두 결함 4개를 본문에 보고했다.
 이 판독은 사전 점수를 대체하지 않는다. 1차는 지시 전달 차이가 섞여 맥락 격리 효과를 재지 못했다.
 
 **2차 (양쪽 본문에 `- 요청·기준: $ARGUMENTS` 한 줄을 똑같이 추가, 실행 전 재등록):**
@@ -58,7 +59,8 @@ fork 실행군은 FINDING 줄을 하나도 쓰지 않았다. forked subagent가 
   천장 효과일 수 있고, 과제 1개·pair 3개·모델 1개라 일반화할 수 없다. 효과는 **미검증**이다.
 - fork는 비용이 조금 더 들고, 인자 누락, 대화 의도를 못 보는 점, interactive 기본 background 실행 같은 실패 조건이 있다.
   그래서 `review` skill의 기본 동작은 그대로 둔다.
-- 반영한 것: fork skill이 `$ARGUMENTS`를 참조하는지 보는 검사(`tests/test-installers.sh`, `harness-tester`).
+- 반영한 것: 인자를 받는 fork skill(`argument-hint`나 `arguments` 선언)이 `$ARGUMENTS`를 쓰는지 보는 검사
+  (`tests/test-installers.sh`, `harness-tester`).
 
 ## 다시 실행하려면
 

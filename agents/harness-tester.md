@@ -51,11 +51,16 @@ echo "Exit code: $?"
 - `allowed-tools` lists tool names (Read, Write, Edit, Bash, Grep, Glob, Agent, WebSearch, WebFetch, …) or permission
   rules such as `Bash(git diff *)`
 - `effort` is `low`, `medium`, `high`, `xhigh` or `max` (if present)
-- `context` is `fork` (if present); `agent` and `background` are only meaningful with `context: fork`
+- `context` is `fork` (if present; `"fork"` and `'fork'` are the same value); `agent` and `background` are only
+  meaningful with `context: fork`
 - A `context: fork` skill needs a task in its body: the subagent does not see the conversation, so guideline-only
   content returns nothing useful
-- A `context: fork` skill that takes arguments references `$ARGUMENTS` in its body. Without it the text after
-  `/skill` never reaches the subagent (observed on Claude Code 2.1.310; `$0` inside `!` commands is still substituted)
+- A `context: fork` skill that takes arguments — it declares `argument-hint` or `arguments`, the documented fields
+  for expected arguments — uses the full `$ARGUMENTS` placeholder in its body (`$ARGUMENTS[0]` does not count).
+  Claude Code appends `ARGUMENTS: <input>` only when no placeholder receives an argument, so once `$0` or a named
+  argument is filled the rest of the typed text is dropped, and the forked subagent cannot see the conversation
+  (observed on Claude Code 2.1.310 with `$0` inside `!` commands). A fork skill that declares neither field is not
+  held to this rule
 
 **Content validation:**
 - Has markdown body after frontmatter
