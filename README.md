@@ -19,6 +19,10 @@ cd pimp-my-claude
 
 ## Codex CLI 지원
 
+`review`는 호출 경로·계약과 최소 재현을 확인하고, 확인된 문제와 가설을 나누어 보고한다.
+작은 비교 사례와 재실행·채점 방법은 [리뷰 사용 실험](docs/review-evidence-eval.md)을 참고한다.
+단일 사례에서 보고 명확성 차이를 관찰한 실험적 절차이며, 일반적인 품질 향상은 입증하지 않았다.
+
 `setup-codex.sh`는 Codex가 공식적으로 탐색하는 `~/.agents/skills/`에 다음 핵심 workflows를
 설치하고, 기존 `~/.codex/AGENTS.md`가 없을 때만 전역 작업 지침을 추가한다.
 
