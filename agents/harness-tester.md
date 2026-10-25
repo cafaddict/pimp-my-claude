@@ -43,11 +43,19 @@ echo "Exit code: $?"
 ### Skills (`SKILL.md` files)
 
 **Frontmatter validation:**
-- Required fields present: `name`, `description`, `allowed-tools`
-- `name` matches directory name
-- `allowed-tools` contains only valid tool names: Read, Write, Edit, Bash, Grep, Glob, Agent, WebSearch, WebFetch
-- `effort` is `high` or `medium` (if present)
-- Optional fields valid: `argument-hint`, `disable-model-invocation`
+- No field is required; `description` should be present. `name`, if present, matches the directory name
+- Every key is a documented field — Claude Code ignores unknown keys silently, so a typo only shows up here:
+  `name`, `description`, `when_to_use`, `argument-hint`, `arguments`, `disable-model-invocation`, `user-invocable`,
+  `allowed-tools`, `disallowed-tools`, `model`, `effort`, `context`, `agent`, `background`, `hooks`, `paths`, `shell`,
+  `metadata`, `license`, `compatibility`
+- `allowed-tools` lists tool names (Read, Write, Edit, Bash, Grep, Glob, Agent, WebSearch, WebFetch, …) or permission
+  rules such as `Bash(git diff *)`
+- `effort` is `low`, `medium`, `high`, `xhigh` or `max` (if present)
+- `context` is `fork` (if present); `agent` and `background` are only meaningful with `context: fork`
+- A `context: fork` skill needs a task in its body: the subagent does not see the conversation, so guideline-only
+  content returns nothing useful
+- A `context: fork` skill that takes arguments references `$ARGUMENTS` in its body. Without it the text after
+  `/skill` never reaches the subagent (observed on Claude Code 2.1.310; `$0` inside `!` commands is still substituted)
 
 **Content validation:**
 - Has markdown body after frontmatter

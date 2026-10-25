@@ -74,6 +74,17 @@ for f in skills/debug-team/SKILL.md skills/review-team/SKILL.md skills/taskloop/
   rg -F '사용자가 요청·승인한 경우에만' "$REPO_DIR/$f" >/dev/null
 done
 refute rg 'vault-note 스킬로 vault .*기록하라|\(note 스킬\)|/note로' "$REPO_DIR/skills" "$REPO_DIR/agents"
+# Claude Code ignores unknown skill frontmatter keys silently, so only documented fields may appear.
+known_keys='^(name|description|when_to_use|argument-hint|arguments|disable-model-invocation|user-invocable|allowed-tools|disallowed-tools|model|effort|context|agent|background|hooks|paths|shell|metadata|license|compatibility)$'
+for f in "$REPO_DIR"/skills/*/SKILL.md; do
+  frontmatter "$f" | sed -n 's/^\([A-Za-z_-]*\):.*/\1/p' | while read -r key; do
+    printf '%s\n' "$key" | rg -q "$known_keys" || { echo "unknown frontmatter key '$key' in $f" >&2; exit 1; }
+  done
+  # A forked skill only receives the text after /skill when its body references $ARGUMENTS.
+  if frontmatter "$f" | rg -qx 'context: fork'; then
+    body "$f" | rg -qF '$ARGUMENTS' || { echo "context: fork without \$ARGUMENTS in $f" >&2; exit 1; }
+  fi
+done
 
 CODEX_VAULT="$TEST_DIR/codex-vault"
 HOME="$TEST_DIR/codex-vault-home" CODEX_HOME="$TEST_DIR/codex-vault-config" AGENTS_HOME="$TEST_DIR/codex-vault-agents" \
