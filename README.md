@@ -135,6 +135,13 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/vault-distill [개념]` | event 노트(sessions/lessons/decisions) → `areas/` entity 페이지로 압축·합성 (지식 복리, 출처 추적) | 가능 |
 | `/guide` | 설치된 기능 전체 가이드 (hook은 settings.json의 실제 바인딩 기준) | 사용자만 |
 
+**리뷰 고르기:** `/review`는 이 레포 skill이다. 지금 대화 맥락에서 SPEC·요구사항 대비 근거(호출 경로, 최소 재현)를 확인한다.
+Claude Code 내장 `/code-review`는 새 subagent에서 버그 위주로 본다(effort, `--fix`, `--comment`). skill 이름이 `review`여도
+`/code-review`는 따로 쓸 수 있다(2.1.310 `-p`에서 프로젝트 skill로 확인). 같은 세션 리뷰와 새 맥락(`context: fork`) 리뷰를
+비교한 작은 실험에서는 품질 차이를 관찰하지 못했고 비용은 조금 늘어 review skill은 바꾸지 않았다:
+[새 맥락 리뷰 실험](docs/review-fresh-context-eval.md). skill에 `context: fork`를 붙일 때는 본문에 `$ARGUMENTS`가 있어야
+`/skill` 뒤의 요청이 subagent에 전달된다.
+
 #### 팀/멀티에이전트 스킬
 | 스킬 | 방식 | 설명 |
 |------|------|------|
