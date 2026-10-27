@@ -1,4 +1,5 @@
-mcp>=1.0.0
+# mcp 2.x renamed FastMCP (mcp.server.fastmcp), which server.py imports.
+mcp>=1.0.0,<2
 fastembed>=0.4.0
 sqlite-vec>=0.1.6
 python-frontmatter>=1.1.0
