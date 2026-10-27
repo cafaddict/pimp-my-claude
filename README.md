@@ -1,6 +1,6 @@
 # pimp-my-claude
 
-Claude Code 환경을 한 번에 구성하는 도구 모음. Codex CLI용 핵심 skills, 전역 `AGENTS.md`,
+Claude Code 환경을 한 번에 구성하는 도구 모음. Codex CLI용 전체 23개 skills, custom agents, 전역 `AGENTS.md`,
 vault MCP, 선택형 hooks도 함께 제공한다. Hooks, Skills, Agents, Vault(Second Brain), MCP
 시맨틱 검색, Agent SDK 도구를 포함.
 
@@ -23,12 +23,14 @@ cd pimp-my-claude
 작은 비교 사례와 재실행·채점 방법은 [리뷰 사용 실험](docs/review-evidence-eval.md)을 참고한다.
 단일 사례에서 보고 명확성 차이를 관찰한 실험적 절차이며, 일반적인 품질 향상은 입증하지 않았다.
 
-`setup-codex.sh`는 Codex가 공식적으로 탐색하는 `~/.agents/skills/`에 다음 핵심 workflows를
+`setup-codex.sh`는 Codex가 공식적으로 탐색하는 `~/.agents/skills/`에 이 저장소의 전체 workflows를
 설치하고, 기존 `~/.codex/AGENTS.md`가 없을 때만 전역 작업 지침을 추가한다.
 
 | 범위 | 설치되는 기능 |
 |------|---------------|
-| Skills (11) | debugit, review, perf, prompt, plain-words, vault-note/save/recall/search/daily/distill |
+| 공통 Skills (11) | debugit, review, perf, prompt, plain-words, vault-note/save/recall/search/daily/distill |
+| Codex 전용 Skills (12) | config-review, debug-team, feature-team, guide, harness, research-team, review-team, sdd, taskloop, tdd, vault-add-project, vault-promote |
+| Custom agents (8) | architect, code-reviewer, harness-tester, implementer, researcher, spec-verifier, spec-writer, test-writer → `~/.codex/agents/*.toml` |
 | `--with-mcp` | 동일 vault를 검색하는 `vault` stdio MCP (`PIMP_MY_VAULT_DIR` 우선) |
 | `--with-hooks` | 문체 강제, 위험 Bash 차단, 완료 알림 |
 | `--with-vault` | 기존 Claude 설치와 공유 가능한 Obsidian vault 구조 |
@@ -36,9 +38,23 @@ cd pimp-my-claude
 Codex에서 skill은 `$review`, `$vault-note`처럼 `$`로 명시 호출하거나, 요청 내용에 맞으면 자동으로
 선택된다. 설치 뒤 새 Codex 세션을 시작하고, hooks는 `/hooks`에서 내용을 검토한 뒤 신뢰하세요.
 
-Claude의 Agent Teams, Claude 전용 subagent 정의, `settings.json`은 Codex와 실행 모델이 달라
-자동 설치하지 않는다. 에이전트를 여러 개 사용하는 작업은 사용자가 요청한 방식으로 진행하며,
-전역 `AGENTS.md` 템플릿은 별도 multi-agent skill의 사용을 강제하지 않는다.
+공통 skill은 `skills/`에서 호출법·메타데이터를 변환하고, 플랫폼 의존 절차는 `codex/skills/`의
+전용 소스를 설치한다. Claude에 별도로 설치한 외부 skill·플러그인은 이 설치기의 대상이 아니다.
+Claude의 Agent Teams 대신 Codex subagent를 쓰며, 반론은 메인 agent가 모아 다른 agent에 전달한다.
+SDD·TDD는 가능한 경우 새 context를 사용한다. subagent 도구가 없는 환경에서는 순서대로 실행하고
+그 제한을 보고한다. worktree는 메인 agent가 실제로 만든 경우에만 분리되며, 기본 git commit·push는 하지 않는다.
+
+`$vault-add-project cpp python`은 설치된 언어 템플릿을 프로젝트 `AGENTS.md`의 표시된 구간에 반영한다.
+기존 지침을 보존하고 언어별 적용 조건을 본문에 명시한다. `$vault-promote`도 승인한 교훈을
+`AGENTS.md`에 반영한다. `$taskloop`의 작업 기록은 `.codex/tasks/`에 둔다.
+`$guide`, `$prompt`, `$vault-daily`, `$vault-add-project`는 `agents/openai.yaml`로 명시 호출 정책을 유지한다.
+Vault 기록은 요청·승인 후에만 만들고 해당 파일만 scoped sync한다.
+
+Custom agent는 [공식 standalone TOML 형식](https://learn.chatgpt.com/docs/agent-configuration/subagents)을
+지원하는 Codex가 필요하다. agent의 model·reasoning·권한은 부모 설정을 따르며, 읽기 전용 역할 지시는
+별도 sandbox를 만들지 않는다. 설치기는 기존 `config.toml`을 바꾸지 않는다.
+전역 `AGENTS.md` 템플릿도 별도 multi-agent skill의 사용을 강제하지 않는다.
+Claude 전용 `settings.json`, statusline, Agent SDK 도구는 그대로 Claude 설치 대상이다.
 
 기존 Claude 설치를 다시 실행할 때도 기존 hook 배열은 안전하게 보존한다. 예전에 설치한 vault
 briefing·자동 format·transcript hook은 자동으로 지우지 않으므로, 필요 없으면
@@ -73,7 +89,8 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
   같으면(git 기록으로 확인) 새 판으로 바꾼다. 직접 고친 파일은 덮어쓰지 않고 목록만 보여 준다.
   hook 스크립트는 예전 배포판이어도 기본 재실행에서는 바꾸지 않는다(`--upgrade-hooks` 몫).
   git clone이 아닌 사본에서 실행하면 예전 판을 확인할 수 없으므로 다른 파일은 모두 "직접 고친 파일"로 보고 둔다.
-- Codex skill 사본(`~/.agents/skills/<skill>/SKILL.md`, `scripts/*`)도 같은 규칙이다. 예전 설치 스크립트들이
+- Codex skill 사본(`~/.agents/skills/<skill>/SKILL.md`, 리소스와 호출 정책), custom agent와 규칙 템플릿도
+  같은 규칙이다. 예전 설치 스크립트들이
   렌더링한 판(git 기록 + 그때의 렌더링 규칙)과 같으면 새 판으로 바꾸고, 그 밖의 파일은 직접 고쳤거나 출처를
   판별할 수 없는 사본으로 보고 그대로 둔 채 목록만 보여 준다. skill 폴더에 직접 더한 파일은 건드리지 않는다.
   보류된 파일을 레포 판으로 바꾸려면 `mv <파일> <파일>.mine && ./setup-codex.sh`, 비교는

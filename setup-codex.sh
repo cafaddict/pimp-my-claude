@@ -216,18 +216,20 @@ case "$(pimp_classify "$SCRIPT_DIR/bin/vault-sync.sh" "$INSTALL_DIR/bin/vault-sy
   *) pimp_install_file "$SCRIPT_DIR/bin/vault-sync.sh" "$INSTALL_DIR/bin/vault-sync.sh" 755 ;;
 esac
 
-# Codex uses standard SKILL.md metadata. These workflows do not depend on
-# Claude-only agents, slash-command argument substitution, or Claude settings.
+# Shared workflows are rendered from skills/; platform-specific workflows have
+# native sources in codex/skills/. Keep the complete, reviewed set explicit.
 CODEX_SKILLS=(
   debugit review perf prompt plain-words
   vault-note vault-save vault-recall vault-search vault-daily vault-distill
+  config-review debug-team feature-team guide harness research-team review-team
+  sdd taskloop tdd vault-add-project vault-promote
 )
 SKILLS_DIR_REPL="$(pimp_sed_repl "$SKILLS_DIR")"
 # Claude-specific frontmatter is not part of the Agent Skills format.
 # Paths stay as placeholders while slash commands become `$skill` names, so a path
 # such as .../skills/plain-words/... or a home directory under /review/ is never
 # rewritten. Slash commands are rewritten only after a line start, space, backtick, or '('.
-render_codex_skill() {
+render_codex_skill_previous() {
   awk '
     NR == 1 && $0 == "---" { frontmatter = 1 }
     frontmatter && /^(allowed-tools|argument-hint|effort):/ { next }
@@ -245,6 +247,21 @@ render_codex_skill() {
     | sed \
       -e "s|__PIMP_SKILLS_DIR__|$SKILLS_DIR_REPL|g" \
       -e "s|__PIMP_INSTALL_DIR__|$INSTALL_DIR_REPL|g"
+}
+render_codex_skill() {
+  render_codex_skill_previous | awk '
+    NR == 1 && $0 == "---" { frontmatter = 1 }
+    frontmatter && /^disable-model-invocation:/ { next }
+    { print }
+    frontmatter && NR > 1 && $0 == "---" { frontmatter = 0 }
+  '
+}
+render_codex_native() {
+  sed \
+    -e "s|{{CODEX_DIR}}|$(pimp_sed_repl "$CODEX_DIR")|g" \
+    -e "s|{{SKILLS_DIR}}|$SKILLS_DIR_REPL|g" \
+    -e "s|{{INSTALL_DIR}}|$INSTALL_DIR_REPL|g" \
+    -e "s|{{SOURCE_DIR}}|$(pimp_sed_repl "$SCRIPT_DIR")|g"
 }
 # Earlier installers rendered SKILL.md differently (a3e60f6 and b6a362d). They are kept
 # only to recognise copies those versions installed, so those can be updated.
@@ -313,22 +330,53 @@ install_skill_file() {
   esac
 }
 for skill in "${CODEX_SKILLS[@]}"; do
-  src="$SCRIPT_DIR/skills/$skill"
-  render_codex_skill < "$src/SKILL.md" > "$SKILL_WORK/$skill.md"
-  install_skill_file "$SKILL_WORK/$skill.md" "$SKILLS_DIR/$skill/SKILL.md" "skills/$skill/SKILL.md" 644 \
-    render_codex_skill render_codex_skill_b6a362d render_codex_skill_a3e60f6
-  if [ -d "$src/scripts" ]; then
+  skill_path="skills/$skill"
+  renderer=render_codex_skill
+  legacy_renderers=(render_codex_skill_previous render_codex_skill_b6a362d render_codex_skill_a3e60f6)
+  if [ -f "$SCRIPT_DIR/codex/skills/$skill/SKILL.md" ]; then
+    skill_path="codex/skills/$skill"
+    renderer=render_codex_native
+    legacy_renderers=()
+  fi
+  src="$SCRIPT_DIR/$skill_path"
+  "$renderer" < "$src/SKILL.md" > "$SKILL_WORK/$skill.md"
+  install_skill_file "$SKILL_WORK/$skill.md" "$SKILLS_DIR/$skill/SKILL.md" "$skill_path/SKILL.md" 644 \
+    "$renderer" ${legacy_renderers[@]+"${legacy_renderers[@]}"}
+  for resource_dir in scripts references assets agents; do
+    [ -d "$src/$resource_dir" ] || continue
     while IFS= read -r rel; do
       mode=644
-      [ -x "$src/scripts/$rel" ] && mode=755
-      install_skill_file "$src/scripts/$rel" "$SKILLS_DIR/$skill/scripts/$rel" "skills/$skill/scripts/$rel" "$mode" cat
-    done < <(cd "$src/scripts" && find . -type f | sed 's|^\./||' | sort)
+      [ -x "$src/$resource_dir/$rel" ] && mode=755
+      install_skill_file "$src/$resource_dir/$rel" "$SKILLS_DIR/$skill/$resource_dir/$rel" \
+        "$skill_path/$resource_dir/$rel" "$mode" cat
+    done < <(cd "$src/$resource_dir" && find . -type f | sed 's|^\./||' | sort)
+  done
+  # Preserve the explicit-only policy of shared Claude skills using Codex metadata.
+  if [ "$renderer" = render_codex_skill ] && awk '
+    NR == 1 && $0 == "---" { f = 1; next }
+    f && $0 == "---" { exit }
+    f && /^disable-model-invocation: true$/ { found = 1 }
+    END { exit !found }
+  ' "$src/SKILL.md"; then
+    install_skill_file "$SCRIPT_DIR/codex/explicit-only.yaml" "$SKILLS_DIR/$skill/agents/openai.yaml" \
+      "codex/explicit-only.yaml" 644 cat
   fi
+done
+# Standalone Codex custom agents need no changes to the user's config.toml.
+for agent in "$SCRIPT_DIR/codex/agents/"*.toml; do
+  install_skill_file "$agent" "$CODEX_DIR/agents/$(basename "$agent")" \
+    "codex/agents/$(basename "$agent")" 644 cat
+done
+# Project initialization consumes these templates without depending on this checkout.
+for template in "$SCRIPT_DIR/rules-templates/"*.md; do
+  install_skill_file "$template" "$INSTALL_DIR/rules-templates/$(basename "$template")" \
+    "rules-templates/$(basename "$template")" 644 cat
 done
 rm -rf "$SKILL_WORK"
 echo "✓ Codex skills (${#CODEX_SKILLS[@]}) → $SKILLS_DIR: $SKILL_WRITTEN file(s) installed or updated"
+echo "✓ Codex custom agents → $CODEX_DIR/agents (parent model and permissions inherited)"
 if [ "${#SKILL_HELD[@]}" -gt 0 ]; then
-  echo "⚠ Kept ${#SKILL_HELD[@]} skill file(s) that match no version this repository installed"
+  echo "⚠ Kept ${#SKILL_HELD[@]} skill file(s) or support file(s) that match no version this repository installed"
   echo "  (your edits, or an install whose origin cannot be determined — not overwritten):"
   for f in "${SKILL_HELD[@]}"; do echo "    $f"; done
   echo "  To take the repository version of one file: mv <file> <file>.mine && ./setup-codex.sh"

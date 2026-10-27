@@ -642,6 +642,7 @@ if [ "$HAS_HISTORY" = true ]; then
 fi
 
 PYTHONPYCACHEPREFIX="$TEST_DIR/pycache" python3 -m py_compile "$REPO_DIR"/mcp/*.py
+bash "$REPO_DIR/tests/test-codex-port.sh"
 git -C "$REPO_DIR" diff --check
 
 echo "installer contracts passed"
