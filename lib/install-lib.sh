@@ -4,7 +4,9 @@
 # Re-running an installer must not overwrite what the user changed. An installed copy is
 # replaced only when it is missing, already current, or byte-identical to a version this
 # repository shipped before (found in git history, after the same rendering). Anything
-# else is a local edit: it is kept and reported. Installed files are never deleted.
+# else is a local edit: it is kept and reported. Installed files are never deleted: a
+# retired skill that still matches a shipped version is moved to a backup directory, and a
+# global instructions file is copied to a backup before it is replaced by a vault link.
 
 PIMP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIMP_REPO_DIR="$(cd "$PIMP_LIB_DIR/.." && pwd)"
@@ -120,4 +122,28 @@ pimp_new_backup_dir() {
   done
   chmod 700 "$dir"
   printf '%s\n' "$dir"
+}
+
+# pimp_user_config_state <vault-file> <dest>
+# Prints one of: absent (no vault copy) | linked (dest already points at it) |
+# other-link (a symlink to something else, or broken) | missing | same | differs
+pimp_user_config_state() {
+  local src="$1" dest="$2"
+  if [ ! -f "$src" ]; then echo absent
+  elif [ -L "$dest" ] && [ "$dest" -ef "$src" ]; then echo linked
+  elif [ -L "$dest" ]; then echo other-link
+  elif [ ! -e "$dest" ]; then echo missing
+  elif cmp -s "$src" "$dest"; then echo same
+  else echo differs
+  fi
+}
+
+# pimp_install_symlink <target> <dest>   (atomic replace of a file by a symlink)
+pimp_install_symlink() {
+  local tmp
+  tmp="$(dirname "$2")/.pimp-link.$$"
+  ln -s "$1" "$tmp"
+  # mv onto a symlink to a directory would move into that directory; drop the old link first.
+  if [ -L "$2" ]; then rm -f "$2"; fi
+  mv -f "$tmp" "$2"
 }

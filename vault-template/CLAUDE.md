@@ -13,6 +13,7 @@ vault/
 ├── decisions/      ADR (아키텍처 의사결정 기록)
 ├── lessons/        교훈 (디버깅, 실수에서 배운 것)
 ├── templates/      노트 템플릿
+├── config/         기기 사이에 공유하는 전역 지침 원본 (claude-global.md, codex-global.md — 설치기가 symlink로 연결)
 └── daily-notes/    일일 노트 (YYYY-MM-DD.md)
 ```
 

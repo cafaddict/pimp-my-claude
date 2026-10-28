@@ -17,6 +17,10 @@ DRY_RUN=false
 VAULT_DIR="${PIMP_MY_VAULT_DIR:-${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}}"
 # source에서 뺀 hook. 설치된 파일은 지우지 않고, --upgrade-hooks 때만 바인딩을 푼다.
 RETIRED_HOOKS=(prompt-hint)
+# vault-* 로 이름을 바꾼 옛 skill. 배포판 그대로인 사본만 백업 폴더로 옮긴다(새 이름과 같이 로드되지 않게).
+RETIRED_SKILLS=(note save-session recall daily)
+# vault에 있는 개인 전역 지침 원본. 있으면 ~/.claude/CLAUDE.md 를 이 파일로의 symlink로 둔다.
+USER_CLAUDE_MD="$VAULT_DIR/config/claude-global.md"
 
 for arg in "$@"; do
   case "$arg" in
@@ -35,7 +39,8 @@ for arg in "$@"; do
       echo "  --with-vault       Obsidian vault 구조 생성"
       echo "  --with-mcp         MCP 시맨틱 검색 서버 설치 (fastembed + sqlite-vec)"
       echo "  --all              위 3개 전부 설치"
-      echo "  --force-claude-md  CLAUDE.md 덮어쓰기 (기존 백업 후 교체)"
+      echo "  --force-claude-md  CLAUDE.md 교체 (기존 백업 후). vault에 config/claude-global.md가 있으면"
+      echo "                     그 파일로의 symlink로, 없으면 템플릿으로 바꾼다"
       echo "  --upgrade-hooks    설치된 hook 정의·스크립트를 현재 템플릿으로 갱신 (diff 출력, 백업 후 적용)"
       echo "                     이 작업만 하고 끝난다. 직접 고친 정의·파일은 보류하고 보고한다."
       echo "  --dry-run          --upgrade-hooks와 함께: 바뀔 내용만 보여 주고 아무것도 쓰지 않음"
@@ -250,6 +255,35 @@ done
 rm -f "$RENDER_TMP"
 echo "✓ Skills 설치 ($(ls -d "$SCRIPT_DIR/skills/"*/ | wc -l | tr -d ' ')개)"
 
+# 3-0. 이름이 바뀐 옛 skill 정리 — 배포판 그대로인 사본만 백업 폴더로 옮긴다(지우지 않음)
+RETIRED_MOVED=()
+RETIRED_KEPT=()
+RETIRE_BACKUP=""
+for name in "${RETIRED_SKILLS[@]}"; do
+  dir="$CLAUDE_DIR/skills/$name"
+  [ -e "$dir" ] || [ -L "$dir" ] || continue
+  if [ ! -L "$dir" ] && [ -d "$dir" ] && [ "$(ls -A "$dir")" = "SKILL.md" ] \
+    && pimp_was_shipped "skills/$name/SKILL.md" "$dir/SKILL.md" render_repo_dir; then
+    if [ -z "$RETIRE_BACKUP" ]; then
+      RETIRE_BACKUP="$(pimp_new_backup_dir "$BACKUP_PARENT")"
+      echo "# pimp-my-claude 은퇴 skill 되돌리기. 아래 명령을 그대로 실행한다." > "$RETIRE_BACKUP/restore-commands.txt"
+    fi
+    mkdir -p "$RETIRE_BACKUP/skills"
+    mv "$dir" "$RETIRE_BACKUP/skills/$name"
+    printf 'mv %q %q\n' "$RETIRE_BACKUP/skills/$name" "$dir" >> "$RETIRE_BACKUP/restore-commands.txt"
+    RETIRED_MOVED+=("$name")
+  else
+    RETIRED_KEPT+=("$dir")
+  fi
+done
+if [ "${#RETIRED_MOVED[@]}" -gt 0 ]; then
+  echo "✓ 이름이 바뀐 옛 skill ${#RETIRED_MOVED[@]}개를 옮김(${RETIRED_MOVED[*]}) — 되돌리기: $RETIRE_BACKUP/restore-commands.txt"
+fi
+if [ "${#RETIRED_KEPT[@]}" -gt 0 ]; then
+  echo "⚠ 이름이 바뀐 옛 skill이 남아 있습니다(직접 고쳤거나 다른 파일이 있음). 새 vault-* skill과 같이 로드되니 직접 정리하세요:"
+  for d in "${RETIRED_KEPT[@]}"; do echo "    $d"; done
+fi
+
 # 3-1. agents 복사
 if [ -d "$SCRIPT_DIR/agents/" ] && ls "$SCRIPT_DIR/agents/"*.md &>/dev/null; then
   for f in "$SCRIPT_DIR/agents/"*.md; do
@@ -317,16 +351,52 @@ else
 fi
 
 
-# 5. CLAUDE.md
-if [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ "$FORCE_CLAUDE_MD" = false ]; then
-  echo "⚠ CLAUDE.md 이미 존재 — 템플릿: $SCRIPT_DIR/CLAUDE-template.md (--force-claude-md 로 덮어쓰기)"
-elif [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ "$FORCE_CLAUDE_MD" = true ]; then
-  cp "$CLAUDE_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md.bak"
-  sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_DIR/CLAUDE.md"
-  echo "✓ CLAUDE.md 덮어쓰기 (백업: CLAUDE.md.bak)"
-else
-  sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_DIR/CLAUDE.md"
-  echo "✓ CLAUDE.md 생성"
+# 5. CLAUDE.md — vault에 개인 원본이 있으면 그 파일로의 symlink, 없으면 템플릿
+CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
+case "$(pimp_user_config_state "$USER_CLAUDE_MD" "$CLAUDE_MD")" in
+  absent)
+    if [ -f "$CLAUDE_MD" ] && [ "$FORCE_CLAUDE_MD" = false ]; then
+      echo "⚠ CLAUDE.md 이미 존재 — 템플릿: $SCRIPT_DIR/CLAUDE-template.md (--force-claude-md 로 덮어쓰기)"
+    elif [ -f "$CLAUDE_MD" ] && [ "$FORCE_CLAUDE_MD" = true ]; then
+      cp "$CLAUDE_MD" "$CLAUDE_DIR/CLAUDE.md.bak"
+      sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_MD"
+      echo "✓ CLAUDE.md 덮어쓰기 (백업: CLAUDE.md.bak)"
+    else
+      sed "s|{{REPO_DIR}}|$SCRIPT_DIR|g" "$SCRIPT_DIR/CLAUDE-template.md" > "$CLAUDE_MD"
+      echo "✓ CLAUDE.md 생성"
+    fi
+    ;;
+  linked)
+    echo "✓ CLAUDE.md → $USER_CLAUDE_MD (vault 원본에 연결됨)"
+    ;;
+  missing|same)
+    pimp_install_symlink "$USER_CLAUDE_MD" "$CLAUDE_MD"
+    echo "✓ CLAUDE.md → $USER_CLAUDE_MD 연결"
+    ;;
+  other-link|differs)
+    if [ "$FORCE_CLAUDE_MD" = true ]; then
+      LINK_BACKUP="$(pimp_new_backup_dir "$BACKUP_PARENT")"
+      if [ -L "$CLAUDE_MD" ]; then
+        printf 'ln -sfn %q %q\n' "$(readlink "$CLAUDE_MD")" "$CLAUDE_MD" > "$LINK_BACKUP/restore-commands.txt"
+      else
+        cp -p "$CLAUDE_MD" "$LINK_BACKUP/CLAUDE.md"
+        printf 'rm -f %q && cp -p %q %q\n' "$CLAUDE_MD" "$LINK_BACKUP/CLAUDE.md" "$CLAUDE_MD" > "$LINK_BACKUP/restore-commands.txt"
+      fi
+      pimp_install_symlink "$USER_CLAUDE_MD" "$CLAUDE_MD"
+      echo "✓ CLAUDE.md → $USER_CLAUDE_MD 연결 (기존 판 백업·되돌리기: $LINK_BACKUP)"
+    elif [ -L "$CLAUDE_MD" ]; then
+      echo "⚠ CLAUDE.md 가 다른 곳을 가리키는 symlink입니다(→ $(readlink "$CLAUDE_MD")) — 그대로 둠."
+      echo "  vault 원본($USER_CLAUDE_MD)에 다시 연결하려면: ./setup.sh --force-claude-md"
+    else
+      echo "⚠ CLAUDE.md 가 vault 원본과 다릅니다 — 그대로 둠. 비교: diff -u $CLAUDE_MD $USER_CLAUDE_MD"
+      echo "  vault 원본에 연결하려면(기존 판은 백업): ./setup.sh --force-claude-md"
+    fi
+    ;;
+esac
+if [ -L "$CLAUDE_MD" ] && [ "$CLAUDE_MD" -ef "$USER_CLAUDE_MD" ] \
+  && [ -n "$(git -C "$VAULT_DIR" status --porcelain -- config/claude-global.md 2>/dev/null)" ]; then
+  echo "  ⚠ vault 원본에 커밋하지 않은 변경이 있습니다. 다른 기계로 보내려면:"
+  echo "    $SCRIPT_DIR/bin/vault-sync.sh --commit \"config: claude-global\" -- config/claude-global.md"
 fi
 
 # 5-1. AGENTS.md symlink (Linux Foundation AAIF 표준 호환 — Cursor/Codex/Windsurf)

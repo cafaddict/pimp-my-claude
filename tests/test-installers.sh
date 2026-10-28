@@ -24,6 +24,8 @@ git config --file "$GIT_CONFIG_GLOBAL" user.name "Installer Test"
 git config --file "$GIT_CONFIG_GLOBAL" core.hooksPath /dev/null
 git config --file "$GIT_CONFIG_GLOBAL" commit.gpgsign false
 git config --file "$GIT_CONFIG_GLOBAL" init.defaultBranch main
+# The installers read the vault path from these; a real vault must not leak into the tests.
+unset PIMP_MY_VAULT_DIR CLAUDE_VAULT_DIR
 
 bash -n "$REPO_DIR/setup.sh" "$REPO_DIR/setup-codex.sh" "$REPO_DIR"/hooks/*.sh "$REPO_DIR"/bin/*.sh "$REPO_DIR"/lib/*.sh
 jq empty "$REPO_DIR/settings-template.json" "$REPO_DIR/codex/hooks.json"
@@ -640,6 +642,76 @@ if [ "$HAS_HISTORY" = true ]; then
   jq -e '[.hooks.PreToolUse[].matcher] == ["^Bash$", "^apply_patch$"]' "$CM/hooks.json" >/dev/null
   jq -e '[.hooks.PreToolUse[] | select(.matcher == "^apply_patch$") | .hooks[].command | test("block-dangerous")] == [true]' "$CM/hooks.json" >/dev/null
 fi
+
+# Renamed vault skills: a shipped copy moves to a backup folder with an undo command, an edited one stays.
+if [ "$HAS_HISTORY" = true ]; then
+  RS="$TEST_DIR/retired-home"
+  mkdir -p "$RS/.claude/skills/note" "$RS/.claude/skills/recall"
+  git -C "$REPO_DIR" show '46e1d37^:skills/note/SKILL.md' > "$RS/.claude/skills/note/SKILL.md"
+  { git -C "$REPO_DIR" show '46e1d37^:skills/recall/SKILL.md'; echo 'my edit'; } > "$RS/.claude/skills/recall/SKILL.md"
+  HOME="$RS" "$REPO_DIR/setup.sh" > "$TEST_DIR/retired.out"
+  test ! -e "$RS/.claude/skills/note"
+  test -d "$RS/.claude/skills/recall"
+  rg -F "$RS/.claude/skills/recall" "$TEST_DIR/retired.out" >/dev/null
+  RB="$(ls -d "$RS/.claude/pimp-my-claude-backups/"*/)"
+  git -C "$REPO_DIR" show '46e1d37^:skills/note/SKILL.md' | cmp - "$RB/skills/note/SKILL.md"
+  HOME="$RS" "$REPO_DIR/setup.sh" >/dev/null
+  test "$(ls "$RS/.claude/pimp-my-claude-backups" | wc -l | tr -d ' ')" = 1
+  bash "$RB/restore-commands.txt"
+  git -C "$REPO_DIR" show '46e1d37^:skills/note/SKILL.md' | cmp - "$RS/.claude/skills/note/SKILL.md"
+fi
+
+# Global instructions kept in the vault: linked when identical, held when different,
+# replaced by a link after a backup with --force-*, and left alone when the vault has none.
+VV="$TEST_DIR/link-vault"
+mkdir -p "$VV/config"
+printf '%s\n' '# my rules' > "$VV/config/claude-global.md"
+printf '%s\n' '# my codex rules' > "$VV/config/codex-global.md"
+
+VH="$TEST_DIR/link-same-home"
+mkdir -p "$VH/.claude"
+cp "$VV/config/claude-global.md" "$VH/.claude/CLAUDE.md"
+HOME="$VH" PIMP_MY_VAULT_DIR="$VV" "$REPO_DIR/setup.sh" >/dev/null
+test "$(readlink "$VH/.claude/CLAUDE.md")" = "$VV/config/claude-global.md"
+test "$(readlink "$VH/.claude/AGENTS.md")" = CLAUDE.md
+git -C "$VV" init -q
+HOME="$VH" PIMP_MY_VAULT_DIR="$VV" "$REPO_DIR/setup.sh" > "$TEST_DIR/link-same.out"
+test "$(readlink "$VH/.claude/CLAUDE.md")" = "$VV/config/claude-global.md"
+rg -F 'vault-sync.sh --commit "config: claude-global" -- config/claude-global.md' "$TEST_DIR/link-same.out" >/dev/null
+test ! -d "$VH/.claude/pimp-my-claude-backups"
+
+VD="$TEST_DIR/link-diff-home"
+mkdir -p "$VD/.claude"
+printf '%s\n' '# local rules' > "$VD/.claude/CLAUDE.md"
+HOME="$VD" PIMP_MY_VAULT_DIR="$VV" "$REPO_DIR/setup.sh" > "$TEST_DIR/link-diff.out"
+test ! -L "$VD/.claude/CLAUDE.md"
+rg -F "diff -u $VD/.claude/CLAUDE.md" "$TEST_DIR/link-diff.out" >/dev/null
+HOME="$VD" PIMP_MY_VAULT_DIR="$VV" "$REPO_DIR/setup.sh" --force-claude-md >/dev/null
+test "$(readlink "$VD/.claude/CLAUDE.md")" = "$VV/config/claude-global.md"
+VB="$(ls -d "$VD/.claude/pimp-my-claude-backups/"*/)"
+rg -x '# local rules' "$VB/CLAUDE.md" >/dev/null
+bash "$VB/restore-commands.txt"
+test ! -L "$VD/.claude/CLAUDE.md"
+rg -x '# local rules' "$VD/.claude/CLAUDE.md" >/dev/null
+
+CS="$TEST_DIR/link-same-codex"
+mkdir -p "$CS"
+cp "$VV/config/codex-global.md" "$CS/AGENTS.md"
+HOME="$TEST_DIR/lsc-home" CODEX_HOME="$CS" AGENTS_HOME="$TEST_DIR/lsc-agents" PIMP_MY_VAULT_DIR="$VV" \
+  "$REPO_DIR/setup-codex.sh" >/dev/null
+test "$(readlink "$CS/AGENTS.md")" = "$VV/config/codex-global.md"
+
+CD="$TEST_DIR/link-diff-codex"
+mkdir -p "$CD"
+printf '%s\n' '# local codex rules' > "$CD/AGENTS.md"
+HOME="$TEST_DIR/ldc-home" CODEX_HOME="$CD" AGENTS_HOME="$TEST_DIR/ldc-agents" PIMP_MY_VAULT_DIR="$VV" \
+  "$REPO_DIR/setup-codex.sh" > "$TEST_DIR/link-diff-codex.out"
+test ! -L "$CD/AGENTS.md"
+rg -F "diff -u $CD/AGENTS.md" "$TEST_DIR/link-diff-codex.out" >/dev/null
+HOME="$TEST_DIR/ldc-home" CODEX_HOME="$CD" AGENTS_HOME="$TEST_DIR/ldc-agents" PIMP_MY_VAULT_DIR="$VV" \
+  "$REPO_DIR/setup-codex.sh" --force-agents >/dev/null
+test "$(readlink "$CD/AGENTS.md")" = "$VV/config/codex-global.md"
+rg -x '# local codex rules' "$CD"/pimp-my-codex/backups/*/AGENTS.md >/dev/null
 
 PYTHONPYCACHEPREFIX="$TEST_DIR/pycache" python3 -m py_compile "$REPO_DIR"/mcp/*.py
 bash "$REPO_DIR/tests/test-codex-port.sh"

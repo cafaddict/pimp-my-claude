@@ -24,7 +24,8 @@ cd pimp-my-claude
 단일 사례에서 보고 명확성 차이를 관찰한 실험적 절차이며, 일반적인 품질 향상은 입증하지 않았다.
 
 `setup-codex.sh`는 Codex가 공식적으로 탐색하는 `~/.agents/skills/`에 이 저장소의 전체 workflows를
-설치하고, 기존 `~/.codex/AGENTS.md`가 없을 때만 전역 작업 지침을 추가한다.
+설치하고, 기존 `~/.codex/AGENTS.md`가 없을 때만 전역 작업 지침을 추가한다. vault에 `config/codex-global.md`가
+있으면 템플릿 대신 그 파일로의 symlink를 둔다([기기 사이 전역 지침](#기기-사이-전역-지침) 참고).
 
 | 범위 | 설치되는 기능 |
 |------|---------------|
@@ -65,7 +66,8 @@ briefing·자동 format·transcript hook은 자동으로 지우지 않으므로,
 
 | 옵션 | 설명 | 필요 조건 |
 |------|------|----------|
-| (기본) | hooks, skills, agents, settings, CLAUDE.md | Claude Code |
+| (기본) | hooks, skills, agents, settings, CLAUDE.md (vault에 `config/claude-global.md`가 있으면 그 파일로의 symlink) | Claude Code |
+| `--force-claude-md` | 기존 CLAUDE.md를 백업한 뒤 교체. vault 원본이 있으면 그 파일로의 symlink, 없으면 템플릿 | - |
 | `--with-vault` | Obsidian vault 구조 생성 + `CLAUDE_VAULT_DIR` 환경변수 등록 | - |
 | `--with-mcp` | MCP 시맨틱 검색 서버 (BM25 + fastembed + sqlite-vec) | Python 3.10+ |
 | `--with-sdk` | Agent SDK 도구 (claude-review 등) | Python 3.10+ |
@@ -95,7 +97,10 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
   판별할 수 없는 사본으로 보고 그대로 둔 채 목록만 보여 준다. skill 폴더에 직접 더한 파일은 건드리지 않는다.
   보류된 파일을 레포 판으로 바꾸려면 `mv <파일> <파일>.mine && ./setup-codex.sh`, 비교는
   `diff -u <파일>.mine <파일>`, 되돌리기는 `mv <파일>.mine <파일>`. `--upgrade-hooks`는 skill을 건드리지 않는다.
-- 설치된 파일은 어떤 경우에도 지우지 않는다.
+- 설치된 파일은 지우지 않는다. 이름이 `vault-*`로 바뀐 옛 skill(`note`·`save-session`·`recall`·`daily`)은 새 이름과
+  같이 로드되므로, 배포판 그대로일 때만 `~/.claude/pimp-my-claude-backups/<UTC 시각>/skills/`로 옮기고 같은 폴더의
+  `restore-commands.txt`에 되돌리는 `mv` 명령을 적는다. 직접 고친 사본은 그대로 두고 경로만 경고한다.
+- 전역 지침(`~/.claude/CLAUDE.md`, Codex는 `~/.codex/AGENTS.md`)은 [기기 사이 전역 지침](#기기-사이-전역-지침)의 규칙을 따른다.
 - 아래 경우에는 아무 파일도 쓰기 전에 멈춘다(exit 1/2): `settings.json`(Codex는 `hooks.json`)이 symlink일 때
   (dotfiles 연결을 끊지 않도록 — 대상 파일을 직접 편집), JSON이 깨졌거나 `hooks` 구조를 해석할 수 없을 때,
   레포 경로(Codex는 `CODEX_HOME`·`AGENTS_HOME`)에 공백이나 셸 특수문자(`' " \ $ ; & | < > ( ) * ? [ ] { } ! #`, 백틱)가
@@ -257,8 +262,30 @@ vault/
 ├── resources/       참고 자료, 패턴 (/vault-note, 사용자 요청·승인 시)
 ├── areas/           지속 관리 영역 (수동)
 ├── daily-notes/     일일 정리 (/vault-daily)
+├── config/          기기 사이에 공유하는 전역 지침 원본 (claude-global.md, codex-global.md)
 └── templates/       노트 템플릿 6종 (session, decision, daily, project, lesson, resource)
 ```
+
+#### 기기 사이 전역 지침
+
+vault는 기기마다 clone해 두는 개인 저장소라, 개인 전역 지침의 원본을 여기에 둔다. 이름을 `CLAUDE.md`·`AGENTS.md`로
+하지 않아서 vault 안에서 작업할 때 지침으로 다시 로드되지 않고, MCP 검색 대상도 아니다.
+
+| vault 원본 | 설치 위치 | 교체 플래그 |
+|-----------|----------|------------|
+| `config/claude-global.md` | `~/.claude/CLAUDE.md` (`setup.sh`) | `--force-claude-md` |
+| `config/codex-global.md` | `~/.codex/AGENTS.md` (`setup-codex.sh`) | `--force-agents` |
+
+- 원본이 있으면 설치 위치를 그 파일로의 symlink로 둔다. 설치 위치에 파일이 없거나 원본과 내용이 같으면 바로 연결하고,
+  내용이 다르면 그대로 둔 채 비교할 `diff -u` 명령을 보여 준다. 다른 곳을 가리키는 symlink도 그대로 둔다.
+  교체 플래그를 주면 기존 판을 백업 폴더에 남기고(되돌리기 명령은 `restore-commands.txt`) 연결한다.
+- 연결된 뒤에는 어느 기기에서 고쳐도 vault 파일이 바뀐다. 다른 기기로 보내려면 vault에 commit해야 한다.
+  커밋하지 않은 변경이 있으면 설치기가 `bin/vault-sync.sh --commit … -- config/<파일>` 명령을 안내한다.
+- 원본이 없으면 지금까지처럼 템플릿을 쓴다.
+- 처음 옮길 때: `mkdir -p <vault>/config && cp ~/.claude/CLAUDE.md <vault>/config/claude-global.md`(Codex는
+  `~/.codex/AGENTS.md` → `codex-global.md`), `bin/vault-sync.sh --commit "config: global instructions" -- config/claude-global.md`,
+  그다음 `./setup.sh`. 다른 기기는 vault를 pull한 뒤 `./setup.sh`(내용이 다르면 `--force-claude-md`).
+- Claude Desktop의 Cowork 세션은 symlink인 `~/.claude/CLAUDE.md`를 읽지 않는다. 터미널 Claude Code에는 영향이 없다.
 
 vault 경로: `$PIMP_MY_VAULT_DIR` 우선, Claude에서는 `$CLAUDE_VAULT_DIR`도 지원 (기본: `~/Documents/vault`).
 `--with-vault` 설치 시 쉘 rc에 자동 등록.

@@ -10,6 +10,8 @@ AGENTS_DIR="${AGENTS_HOME:-$HOME/.agents}"
 SKILLS_DIR="$AGENTS_DIR/skills"
 INSTALL_DIR="$CODEX_DIR/pimp-my-codex"
 VAULT_DIR="${PIMP_MY_VAULT_DIR:-${CLAUDE_VAULT_DIR:-$HOME/Documents/vault}}"
+# Personal global guidance kept in the vault. When present, ~/.codex/AGENTS.md links to it.
+USER_CODEX_MD="$VAULT_DIR/config/codex-global.md"
 INSTALL_VAULT=false
 INSTALL_MCP=false
 INSTALL_HOOKS=false
@@ -29,7 +31,8 @@ Options:
   --with-mcp         Install the local vault semantic-search MCP server
   --with-hooks       Install optional writing, safety, and completion hooks (review with /hooks)
   --all              Enable vault, MCP, and hooks
-  --force-agents     Replace ~/.codex/AGENTS.md after making a .bak copy
+  --force-agents     Replace ~/.codex/AGENTS.md after a backup: with a link to the vault's
+                     config/codex-global.md when it exists, otherwise with the template
   --upgrade-hooks    Only update installed hook definitions and scripts to this version:
                      prints a diff, backs up, then applies. Edited ones are kept and reported.
   --dry-run          With --upgrade-hooks: show the changes, write nothing
@@ -384,15 +387,50 @@ if [ "${#SKILL_HELD[@]}" -gt 0 ]; then
 fi
 
 AGENTS_DEST="$CODEX_DIR/AGENTS.md"
-if [ -f "$AGENTS_DEST" ] && [ "$FORCE_AGENTS" = false ]; then
-  echo "⚠ Existing AGENTS.md preserved — template: $SCRIPT_DIR/codex/AGENTS.md"
-elif [ -f "$AGENTS_DEST" ]; then
-  cp "$AGENTS_DEST" "$AGENTS_DEST.bak"
-  cp "$SCRIPT_DIR/codex/AGENTS.md" "$AGENTS_DEST"
-  echo "✓ AGENTS.md replaced (backup: $AGENTS_DEST.bak)"
-else
-  cp "$SCRIPT_DIR/codex/AGENTS.md" "$AGENTS_DEST"
-  echo "✓ Global Codex guidance installed"
+case "$(pimp_user_config_state "$USER_CODEX_MD" "$AGENTS_DEST")" in
+  absent)
+    if [ -f "$AGENTS_DEST" ] && [ "$FORCE_AGENTS" = false ]; then
+      echo "⚠ Existing AGENTS.md preserved — template: $SCRIPT_DIR/codex/AGENTS.md"
+    elif [ -f "$AGENTS_DEST" ]; then
+      cp "$AGENTS_DEST" "$AGENTS_DEST.bak"
+      cp "$SCRIPT_DIR/codex/AGENTS.md" "$AGENTS_DEST"
+      echo "✓ AGENTS.md replaced (backup: $AGENTS_DEST.bak)"
+    else
+      cp "$SCRIPT_DIR/codex/AGENTS.md" "$AGENTS_DEST"
+      echo "✓ Global Codex guidance installed"
+    fi
+    ;;
+  linked)
+    echo "✓ AGENTS.md → $USER_CODEX_MD (linked to the vault copy)"
+    ;;
+  missing|same)
+    pimp_install_symlink "$USER_CODEX_MD" "$AGENTS_DEST"
+    echo "✓ AGENTS.md → $USER_CODEX_MD linked"
+    ;;
+  other-link|differs)
+    if [ "$FORCE_AGENTS" = true ]; then
+      link_backup="$(pimp_new_backup_dir "$INSTALL_DIR/backups")"
+      if [ -L "$AGENTS_DEST" ]; then
+        printf 'ln -sfn %q %q\n' "$(readlink "$AGENTS_DEST")" "$AGENTS_DEST" > "$link_backup/restore-commands.txt"
+      else
+        cp -p "$AGENTS_DEST" "$link_backup/AGENTS.md"
+        printf 'rm -f %q && cp -p %q %q\n' "$AGENTS_DEST" "$link_backup/AGENTS.md" "$AGENTS_DEST" > "$link_backup/restore-commands.txt"
+      fi
+      pimp_install_symlink "$USER_CODEX_MD" "$AGENTS_DEST"
+      echo "✓ AGENTS.md → $USER_CODEX_MD linked (previous version and undo command: $link_backup)"
+    elif [ -L "$AGENTS_DEST" ]; then
+      echo "⚠ AGENTS.md is a symlink to something else (→ $(readlink "$AGENTS_DEST")) — left as is."
+      echo "  To link it to the vault copy ($USER_CODEX_MD): ./setup-codex.sh --force-agents"
+    else
+      echo "⚠ AGENTS.md differs from the vault copy — left as is. Compare: diff -u $AGENTS_DEST $USER_CODEX_MD"
+      echo "  To link it to the vault copy (the current file is backed up): ./setup-codex.sh --force-agents"
+    fi
+    ;;
+esac
+if [ -L "$AGENTS_DEST" ] && [ "$AGENTS_DEST" -ef "$USER_CODEX_MD" ] \
+  && [ -n "$(git -C "$VAULT_DIR" status --porcelain -- config/codex-global.md 2>/dev/null)" ]; then
+  echo "  ⚠ The vault copy has uncommitted changes. To send them to other machines:"
+  echo "    $SCRIPT_DIR/bin/vault-sync.sh --commit \"config: codex-global\" -- config/codex-global.md"
 fi
 
 if [ "$INSTALL_VAULT" = true ]; then
