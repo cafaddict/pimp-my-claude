@@ -1,5 +1,6 @@
 ---
-globs: ["*.cpp", "*.hpp", "*.h", "*.cc", "*.cxx"]
+paths:
+  - "**/*.{cpp,hpp,h,cc,cxx}"
 ---
 - Modern C++ (C++17/20/23) idioms and features
 - RAII and smart pointers required — no raw new/delete

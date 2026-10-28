@@ -1,5 +1,9 @@
 ---
-globs: ["*test*", "*spec*", "tests/**", "test/**"]
+paths:
+  - "**/*test*"
+  - "**/*spec*"
+  - "**/tests/**"
+  - "**/test/**"
 ---
 - Test names: test_<thing>_<condition>_<expected>
 - pytest only — no unittest

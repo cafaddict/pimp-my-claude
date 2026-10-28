@@ -1,5 +1,6 @@
 ---
-globs: ["*.py"]
+paths:
+  - "**/*.py"
 ---
 - Python 3.10+ target
 - Type hints required for all function signatures

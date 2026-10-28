@@ -1,5 +1,6 @@
 ---
-globs: ["*.rs"]
+paths:
+  - "**/*.rs"
 ---
 - Rust edition 2021+ idioms and features
 - Ownership and borrowing first — Arc/Rc only when shared ownership is genuinely needed

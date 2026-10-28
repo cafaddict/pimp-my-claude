@@ -1,5 +1,12 @@
 ---
-globs: ["**/vault/**/*.md", "**/Documents/vault/**"]
+paths:
+  - "sessions/**/*.md"
+  - "decisions/**/*.md"
+  - "lessons/**/*.md"
+  - "resources/**/*.md"
+  - "areas/**/*.md"
+  - "projects/**/*.md"
+  - "daily-notes/**/*.md"
 ---
 ## Vault 노트 품질 기준
 

@@ -318,7 +318,7 @@ MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니�
 
 | 템플릿 | 적용 대상 | 배포 |
 |--------|----------|------|
-| vault-notes.md | **/vault/**/*.md | **전역** (`~/.claude/rules/`, setup.sh) |
+| vault-notes.md | vault 루트의 sessions/·decisions/·lessons/·resources/·areas/·projects/·daily-notes/ (vault 를 작업 디렉터리로 연 세션) | **전역** (`~/.claude/rules/`, setup.sh) |
 | plain-words.md | 모든 세션 (glob 없음 → 항상 로드) | **전역** (`~/.claude/rules/`, setup.sh) |
 | cpp.md | *.cpp, *.hpp, *.h, *.cc | 프로젝트별 (init-project.sh) |
 | python.md | *.py | 프로젝트별 (init-project.sh) |
