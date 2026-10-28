@@ -141,7 +141,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/prompt` | 프롬프트를 Task/Context/Req/Output 구조로 변환 | 사용자만 |
 | `/plain-words` | 쉬운 단어로 쓰기 — 논문식 한자어(유휴/축출/이질적)·영어 격식어(utilize/facilitate)는 풀고, 정착된 기술 용어(queue/TTFT/threshold)는 억지 번역 금지 | 가능 |
 | `/taskloop [이름]` | Boris 스타일 태스크 루프 (계획→승인→실행→교훈) | 가능 |
-| `/config-review` | harness(CLAUDE.md/rules/skills/hooks/agents) staleness·bloat·중복 감사 → prune/dedup/reroute (vault-promote의 역방향). 리포트만 낼 때는 파일을 쓰지 않음 | 가능 |
+| `/config-review` | harness(CLAUDE.md/rules/skills/hooks/agents) staleness·bloat·중복·프롬프트 패턴(압박 표현·화석·실물과 다른 목록) 감사 → prune/dedup/reroute (vault-promote의 역방향). 리포트만 낼 때는 파일을 쓰지 않음 | 가능 |
 | `/vault-note` | vault에 결정/교훈/패턴 기록 | 사용자 요청·승인 시 |
 | `/vault-recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/vault-search [키워드]` | vault 전체 검색 (decisions/lessons/areas/resources/projects) | 사용자만 |
