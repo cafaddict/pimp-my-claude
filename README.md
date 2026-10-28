@@ -204,7 +204,7 @@ python skills/plain-words/scripts/check.py docs/*.md
 | `researcher` | 리서치 전문가 (웹 검색, 문서, 코드베이스). 파일을 쓰지 않고 호출자에게 보고. Bash가 있어 도구 수준의 읽기 전용은 아님 | inherit | - |
 | `spec-writer` | 스펙 형식화 전문가 (요구사항→스펙, 코드→스펙 역추출) | inherit | - |
 | `spec-verifier` | 스펙 대비 검증 전문가 (skeptical 튜닝) | inherit | - |
-| `harness-tester` | harness 컴포넌트 검증 (hook/skill/agent/setting) | sonnet-4-6 | - |
+| `harness-tester` | harness 컴포넌트 검증 (hook/skill/agent/setting) | sonnet | - |
 
 ### Hooks (8개 소스, 기본 활성화 4개)
 

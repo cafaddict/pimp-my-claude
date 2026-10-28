@@ -4,7 +4,7 @@ description: |
   Claude Code harness 컴포넌트 검증 전문가.
   hook, skill, agent, setting 파일의 구조와 동작을 테스트한다.
 tools: Read, Bash, Grep, Glob
-model: claude-sonnet-4-6
+model: sonnet
 memory: project
 effort: high
 ---

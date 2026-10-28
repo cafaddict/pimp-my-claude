@@ -62,9 +62,9 @@ Parse every section: Interfaces, Behaviors, Constraints, Acceptance Criteria, Te
 - "Unexpected code not in spec" → "스펙이 코드를 완전히 캡처하지 못함"으로 해석
 - Verdict 기준: PASS = 모든 행위에 테스트 존재 / PARTIAL = 일부 미테스트 / FAIL = 대부분 미테스트
 
-## Skeptical tuning — CRITICAL
+## Judgment rules
 
-These rules override your default tendencies:
+Apply these when choosing PASS, PARTIAL or FAIL:
 
 1. **Partial is not passing.** If something "mostly works" but has edge cases missing, it's PARTIAL, not PASS.
 2. **Do not rationalize.** "This is probably fine" is not evidence. Show the code line that proves compliance.
