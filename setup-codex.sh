@@ -464,6 +464,14 @@ if [ "$INSTALL_MCP" = true ]; then
     VENV_DIR="$MCP_DIR/.venv"
     [ -d "$VENV_DIR" ] || python3 -m venv "$VENV_DIR"
     "$VENV_DIR/bin/pip" install -q -r "$MCP_DIR/requirements.txt"
+    # Codex stops a tool call after 60s by default; a first search that has to download the
+    # model (~220MB) and index the whole vault can take longer, so do both now.
+    echo "Downloading the embedding model and indexing the vault (1-2 min)..."
+    if PREPARE_OUT=$(PIMP_MY_VAULT_DIR="$VAULT_DIR" "$VENV_DIR/bin/python" "$MCP_DIR/server.py" --prepare 2>/dev/null); then
+      echo "✓ $PREPARE_OUT"
+    else
+      echo "⚠ Model/index preparation failed; the first search will retry. See why: $VENV_DIR/bin/python $MCP_DIR/server.py --prepare"
+    fi
     codex mcp remove vault >/dev/null 2>&1 || true
     codex mcp add vault --env "PIMP_MY_VAULT_DIR=$VAULT_DIR" -- \
       "$VENV_DIR/bin/python" "$MCP_DIR/server.py"

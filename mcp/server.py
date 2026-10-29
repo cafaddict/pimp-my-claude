@@ -1,5 +1,6 @@
 """MCP server for Obsidian vault hybrid semantic search."""
 
+import argparse
 import json
 import os
 import sqlite3
@@ -12,6 +13,8 @@ from indexer import reindex, IndexStats
 from searcher import hybrid_search
 
 mcp = FastMCP(name="vault-search")
+
+MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 # Lazy singletons
 _conn: sqlite3.Connection | None = None
@@ -40,14 +43,20 @@ def _get_connection() -> sqlite3.Connection:
     return _conn
 
 
+def _model_cache_dir() -> str:
+    # fastembed defaults to the OS temp dir, which macOS purges. A re-download inside a
+    # tool call can outlast the client's timeout (Codex: 60s), so keep the model under HOME.
+    return os.environ.get(
+        "FASTEMBED_CACHE_PATH", os.path.expanduser("~/.cache/fastembed")
+    )
+
+
 def _get_embedding_model():
     global _model
     if _model is None:
         from fastembed import TextEmbedding
 
-        _model = TextEmbedding(
-            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-        )
+        _model = TextEmbedding(model_name=MODEL_NAME, cache_dir=_model_cache_dir())
     return _model
 
 
@@ -134,5 +143,28 @@ def reindex_vault(force: bool = False) -> str:
     )
 
 
+def prepare() -> str:
+    """Download the model and build the index up front, so no tool call waits for either."""
+    model = _get_embedding_model()
+    vault_dir = _get_vault_dir()
+    # init_db would create <vault>/.cache, so never index a vault that does not exist yet.
+    if not os.path.isdir(vault_dir):
+        return f"model ready; no vault at {vault_dir} yet, so the first search builds the index"
+    stats = reindex(vault_dir, _get_connection(), model, force=False)
+    return (
+        f"model ready; indexed {stats.indexed} of {stats.total_files} notes "
+        f"in {stats.elapsed_sec:.0f}s"
+    )
+
+
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    parser = argparse.ArgumentParser(description="Vault search MCP server (stdio).")
+    parser.add_argument(
+        "--prepare",
+        action="store_true",
+        help="download the embedding model, build the index, and exit",
+    )
+    if parser.parse_args().prepare:
+        print(prepare())
+    else:
+        mcp.run(transport="stdio")

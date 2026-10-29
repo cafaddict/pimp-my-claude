@@ -492,9 +492,13 @@ if [ "$INSTALL_MCP" = true ]; then
     "$VENV_DIR/bin/pip" install -q -r "$MCP_DIR/requirements.txt"
     echo "✓ Dependencies 설치 완료"
 
-    # 임베딩 모델 사전 다운로드 (~220MB)
-    "$VENV_DIR/bin/python" -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')" 2>/dev/null
-    echo "✓ Embedding 모델 다운로드 완료 (paraphrase-multilingual-MiniLM-L12-v2)"
+    # 임베딩 모델(~220MB, ~/.cache/fastembed)과 vault 색인을 미리 만들어 첫 검색이 기다리지 않게 한다
+    echo "  Embedding 모델 다운로드 + vault 색인 (1~2분)"
+    if PREPARE_OUT=$(PIMP_MY_VAULT_DIR="$VAULT_DIR" "$VENV_DIR/bin/python" "$MCP_DIR/server.py" --prepare 2>/dev/null); then
+      echo "✓ $PREPARE_OUT"
+    else
+      echo "⚠ 모델/색인 준비 실패 — 첫 검색 때 다시 시도한다. 원인 확인: $VENV_DIR/bin/python $MCP_DIR/server.py --prepare"
+    fi
 
     # Claude Code MCP 등록
     if command -v claude &>/dev/null; then
@@ -508,7 +512,7 @@ if [ "$INSTALL_MCP" = true ]; then
       echo "  claude mcp add vault -s user -e CLAUDE_VAULT_DIR=$VAULT_DIR -- $VENV_DIR/bin/python $MCP_DIR/server.py"
     fi
 
-    echo "  (첫 검색 시 자동 인덱싱 ~15초)"
+    echo "  (이후 검색 때는 바뀐 노트만 다시 색인)"
   fi
 fi
 

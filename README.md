@@ -323,6 +323,10 @@ BM25 키워드 + 벡터 시맨틱 하이브리드 검색을 제공하는 자체 
 - **sqlite-vec + FTS5** — 단일 .db 파일, 외부 DB 불필요
 - **RRF 융합** — 키워드와 시맨틱 결과를 자동 결합
 - **자동 증분 인덱싱** — 검색 시 변경된 파일 자동 반영
+- **설치 때 미리 준비** — `setup.sh`/`setup-codex.sh --with-mcp`가 모델을 받고 vault 색인을 한 번 만든다
+  (`server.py --prepare`). Codex는 도구 호출을 기본 60초에 끊어서, 첫 검색에서 이 둘을 하면 timeout이 난다
+- **모델 위치** — `~/.cache/fastembed` (`FASTEMBED_CACHE_PATH`로 변경). fastembed 기본값인 OS 임시 폴더는
+  macOS가 주기적으로 비워서 다시 받게 된다. 색인은 `<vault>/.cache/vault-search.db`이고 Claude와 Codex가 함께 쓴다
 - headless Linux 서버에서도 동작 (Obsidian 불필요)
 
 MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니다.
