@@ -164,6 +164,8 @@ Claude Code 내장 `/code-review`는 새 subagent에서 버그 위주로 본다(
 [새 맥락 리뷰 실험](docs/review-fresh-context-eval.md). 인자를 받는 skill(`argument-hint`나 `arguments` 선언)에
 `context: fork`를 붙일 때는 본문에 `$ARGUMENTS`가 있어야 `/skill` 뒤의 요청이 subagent에 모두 전달된다.
 
+최적화 전 참조 구현 대조 지침의 [작은 테스트 설계 비교](docs/perf-differential-eval.md)는 4/4 동률이라 `perf` 기본 동작을 유지했다.
+
 #### 팀/멀티에이전트 스킬
 | 스킬 | 방식 | 설명 |
 |------|------|------|
