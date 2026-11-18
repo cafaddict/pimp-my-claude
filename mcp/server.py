@@ -145,6 +145,13 @@ def reindex_vault(force: bool = False) -> str:
 
 def prepare() -> str:
     """Download the model and build the index up front, so no tool call waits for either."""
+    # Install time is the one step meant to reach the network. With HF_HUB_OFFLINE=1
+    # fastembed only looks in its cache, so the download fails here, and the server,
+    # which inherits the same setting, cannot fetch the model later either. Lift the
+    # switches for this process only; huggingface_hub reads them when fastembed first
+    # imports it, inside _get_embedding_model below.
+    os.environ["HF_HUB_OFFLINE"] = "0"
+    os.environ["TRANSFORMERS_OFFLINE"] = "0"
     model = _get_embedding_model()
     vault_dir = _get_vault_dir()
     # init_db would create <vault>/.cache, so never index a vault that does not exist yet.
