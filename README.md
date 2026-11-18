@@ -327,6 +327,8 @@ BM25 키워드 + 벡터 시맨틱 하이브리드 검색을 제공하는 자체 
   (`server.py --prepare`). Codex는 도구 호출을 기본 60초에 끊어서, 첫 검색에서 이 둘을 하면 timeout이 난다
 - **모델 위치** — `~/.cache/fastembed` (`FASTEMBED_CACHE_PATH`로 변경). fastembed 기본값인 OS 임시 폴더는
   macOS가 주기적으로 비워서 다시 받게 된다. 색인은 `<vault>/.cache/vault-search.db`이고 Claude와 Codex가 함께 쓴다
+- **`HF_HUB_OFFLINE=1` 환경** — `--prepare`는 이 설정을 자기 프로세스에서만 끄고 모델을 받는다. 서버는 설정을
+  그대로 물려받아 받아 둔 모델만 읽으므로, 모델은 설치 때 받아 두어야 한다
 - headless Linux 서버에서도 동작 (Obsidian 불필요)
 
 MCP 없이도 Grep 기반 키워드 검색으로 모든 스킬이 동작합니다.
