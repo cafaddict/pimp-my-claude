@@ -150,7 +150,7 @@ CLAUDE_VAULT_DIR=/path/to/vault ./setup.sh --with-vault
 | `/vault-note` | vault에 결정/교훈/패턴 기록 | 사용자 요청·승인 시 |
 | `/vault-recall [키워드]` | 이전 세션 컨텍스트 복원 (vault 시맨틱 검색) | 가능 |
 | `/vault-search [키워드]` | vault 전체 검색 (decisions/lessons/areas/resources/projects) | 사용자만 |
-| `/vault-save` | 현재 세션 요약을 vault에 저장 | 사용자 요청·승인 시 (마무리 시 제안) |
+| `/vault-save` | 현재 세션 요약을 vault에 저장 | 사용자 요청·승인 시 (작업 단위 끝·주제 전환·/compact 전·마무리 때 한 줄 제안) |
 | `/vault-daily` | 하루 정리 (오늘 세션 종합 → daily note, 직접 호출할 때만 기록·sync) | 사용자만 |
 | `/vault-add-project [언어...]` | 프로젝트 초기화 — `.claude/rules/` + vault 프로젝트 폴더 생성 | 사용자만 |
 | `/vault-promote` | lessons/에서 반복 교훈 탐지 → `.claude/rules/` 승격 제안 | 사용자만 |
