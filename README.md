@@ -301,7 +301,8 @@ vault 경로: `$PIMP_MY_VAULT_DIR` 우선, Claude에서는 `$CLAUDE_VAULT_DIR`�
 - 절대 경로, `..`, `.git` 안 경로, 디렉터리, 없는 파일은 저장소를 건드리기 전에 거부한다. glob·pathspec magic은 글자 그대로 취급한다.
 - `sessions/pre-compact/` 아래 파일과 `sessions/subagent-activity.log`(예전 hook이 남긴 원본 transcript·로그)도 거부한다.
   이미 commit된 사본을 정리하지는 않는다.
-- 다음 경우에는 아무것도 commit·push하지 않고 중단한다: 다른 sync 실행 중(`.git/pimp-vault-sync.lock`), merge/rebase 진행 중,
+- 다음 경우에는 아무것도 commit·push하지 않고 중단한다: 다른 sync 실행 중(`.git/pimp-vault-sync.lock`), vault의 `.git`에 쓸 수 없음
+  (예: Codex workspace-write sandbox는 작업 폴더 밖 쓰기와 네트워크를 막는다. 이때는 "can't write to the vault's .git"로 따로 알린다), merge/rebase 진행 중,
   pull 실패, 로컬 변경 복원 충돌, 아직 push하지 않은 이전 로컬 commit이 있음(원격 브랜치가 아직 없을 때 기존 history 포함).
   이전 commit은 직접 검토해 `git push -u origin <branch>`로 한 번 올린 뒤 다시 실행한다.
 
