@@ -28,5 +28,6 @@ VAULT_DIR은 `$PIMP_MY_VAULT_DIR`, 없으면 `~/Documents/vault`이다.
    ```bash
    {{INSTALL_DIR}}/bin/vault-sync.sh --commit "project: init <프로젝트명>" -- "projects/<프로젝트명>.md"
    ```
+   이 스크립트는 처음부터 sandbox 밖에서 실행한다(`sandbox_permissions: "require_escalated"`로 승인 요청). sandbox 안에서는 vault의 `.git`에 쓸 수 없어 멈춘다.
    충돌·sync 실패는 즉시 중단하고 보고한다. 노트를 건너뛰었으면 sync하지 않는다.
 6. 변경한 지침, 만든 노트와 검사 결과를 보고한다. 프로젝트 코드의 commit·push는 하지 않는다.

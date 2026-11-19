@@ -6,6 +6,7 @@ description: "vault lessons에서 반복되는 교훈을 찾아 프로젝트 AGE
 VAULT_DIR은 `$PIMP_MY_VAULT_DIR`, 없으면 `~/Documents/vault`이다. 기본은 읽기 전용 제안이다.
 분석을 위해 vault pull이 필요하면 `{{INSTALL_DIR}}/bin/vault-sync.sh --pull`을 쓰고,
 충돌·실패 시 중단해 보고한다. vault 노트를 수정하지 않는다.
+이 스크립트는 처음부터 sandbox 밖에서 실행한다(`sandbox_permissions: "require_escalated"`로 승인 요청). sandbox 안에서는 vault의 `.git`에 쓸 수 없어 멈춘다.
 
 1. `lessons/`의 tags·keywords·본문에서 같은 문제와 해결이 반복되는지 확인한다.
    `--project <이름>`이 있으면 project 필드로 한정한다. 기본 최소 빈도는 3회이며
