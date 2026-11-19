@@ -120,6 +120,7 @@ SYNC_PATHS=("$SESSION_PATH" "$DAILY_PATH")
 [ -n "${NOTE_PATH:-}" ] && SYNC_PATHS+=("$NOTE_PATH")
 {{REPO_DIR}}/bin/vault-sync.sh --commit "daily: YYYY-MM-DD" -- "${SYNC_PATHS[@]}"
 ```
+Codex에서는 이 스크립트를 처음부터 sandbox 밖에서 실행한다(`sandbox_permissions: "require_escalated"`로 승인 요청). sandbox 안에서는 vault의 `.git`에 쓸 수 없어 멈춘다.
 충돌·sync 실패는 무시하지 말고 즉시 중단해 사용자에게 알린다.
 
 #### 7. 사용자에게 확인

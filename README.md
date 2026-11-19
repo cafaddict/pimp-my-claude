@@ -54,6 +54,9 @@ Vault 기록은 요청·승인 후에만 만들고 해당 파일만 scoped sync�
 Custom agent는 [공식 standalone TOML 형식](https://learn.chatgpt.com/docs/agent-configuration/subagents)을
 지원하는 Codex가 필요하다. agent의 model·reasoning·권한은 부모 설정을 따르며, 읽기 전용 역할 지시는
 별도 sandbox를 만들지 않는다. 설치기는 기존 `config.toml`을 바꾸지 않는다.
+vault skill은 Codex에게 `vault-sync.sh`를 처음부터 sandbox 밖에서 실행하도록(`require_escalated` 승인 요청) 안내한다.
+workspace-write sandbox 안에서는 vault의 `.git`에 쓸 수 없다. vault를 `writable_roots`로 열지 않는다:
+그 안에서는 `git stash -u`가 Codex의 보호 폴더(`.agents/`, `.aws/`, `.codex/`)를 지우지 못해 실패한다.
 전역 `AGENTS.md` 템플릿도 별도 multi-agent skill의 사용을 강제하지 않는다.
 Claude 전용 `settings.json`, statusline, Agent SDK 도구는 그대로 Claude 설치 대상이다.
 
@@ -305,6 +308,8 @@ vault 경로: `$PIMP_MY_VAULT_DIR` 우선, Claude에서는 `$CLAUDE_VAULT_DIR`�
   (예: Codex workspace-write sandbox는 작업 폴더 밖 쓰기와 네트워크를 막는다. 이때는 "can't write to the vault's .git"로 따로 알린다), merge/rebase 진행 중,
   pull 실패, 로컬 변경 복원 충돌, 아직 push하지 않은 이전 로컬 commit이 있음(원격 브랜치가 아직 없을 때 기존 history 포함).
   이전 commit은 직접 검토해 `git push -u origin <branch>`로 한 번 올린 뒤 다시 실행한다.
+- `git stash` 가 도중에 실패하면(예: 지울 수 없는 디렉터리가 있음) git은 stash를 저장한 뒤 추적 안 된 파일을 지우다 멈춘다.
+  이때 이미 지워진 추적 안 된 파일을 stash에서 그 자리에 되돌려 놓고, 무엇을 되돌렸는지 알린 뒤 중단한다. stash는 사본으로 남긴다.
 
 복구 방법: 중단 메시지에 나온 stash(`git stash list`에서 `pimp-my-claude auto-sync`, SHA 함께 표시)는 지워지지 않는다. pull 실패라면
 pull 문제를 해결한 뒤 `git stash pop --index <stash>`로 되돌린다(`pop`은 복원에 성공했을 때만 stash를 지운다).
