@@ -118,12 +118,45 @@ if [ "$MODE" = "commit" ] && [ "$HAS_REMOTE" = true ] && [ -z "$BRANCH" ]; then
   fail "HEAD is detached in $VAULT_DIR; check out a branch first."
 fi
 
+# `git stash push --include-untracked` saves the stash first and then deletes the untracked
+# files. If a deletion fails (a directory it can't remove, such as the read-only placeholders
+# an agent sandbox mounts), git stops there: tracked changes stay, but untracked files it
+# already deleted exist only in the stash. Put those back before stopping, so nothing is left
+# only in the stash, and keep the stash as a copy.
+stash_push_failed() {
+  local before="$1" s p back=() left=()
+  s="$(git rev-parse --verify --quiet refs/stash || true)"
+  if [ -z "$s" ] || [ "$s" = "$before" ]; then
+    fail "git stash failed before saving anything; nothing was changed."
+  fi
+  if git rev-parse -q --verify "$s^3" >/dev/null; then
+    while IFS= read -r -d '' p; do
+      if [ -e "$p" ] || [ -L "$p" ]; then
+        [ "$(git hash-object -- "$p" 2>/dev/null || true)" = "$(git rev-parse "$s^3:$p")" ] || left+=("$p")
+        continue
+      fi
+      if mkdir -p -- "$(dirname -- "$p")" && git show "$s^3:$p" > "$p"; then back+=("$p"); else left+=("$p"); fi
+    done < <(git ls-tree -r -z --name-only "$s^3")
+  fi
+  {
+    echo "vault sync stopped: git stash failed partway; nothing was pulled, committed, or pushed."
+    echo "The stash was saved as $s and is kept as a copy."
+    [ "${#back[@]}" -gt 0 ] && printf '  put back (untracked): %s\n' "${back[@]}"
+    [ "${#left[@]}" -gt 0 ] && printf '  NOT put back, differs or failed (saved copy: git show %s^3:<path>): %s\n' "$s" "${left[@]}"
+    git diff --quiet "$s" -- . || echo "  tracked files differ from the stash; compare with: git diff $s"
+    echo "In an agent sandbox, run vault-sync.sh outside the sandbox. Drop the stash only after checking: git stash show --include-untracked --name-status $s"
+  } >&2
+  exit 1
+}
+
 # Protect local work. The stash is tracked by its commit id, not by stash@{N},
 # so stashes made by anything else cannot be confused with this one.
 STASH_SHA=""
 if [ "$HAS_HEAD" = true ] && { ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; }; then
   BEFORE="$(git rev-parse --verify --quiet refs/stash || true)"
-  git stash push --include-untracked -m "pimp-my-claude auto-sync $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >/dev/null
+  if ! git stash push --include-untracked -m "pimp-my-claude auto-sync $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >/dev/null; then
+    stash_push_failed "$BEFORE"
+  fi
   AFTER="$(git rev-parse --verify --quiet refs/stash || true)"
   [ -n "$AFTER" ] && [ "$AFTER" != "$BEFORE" ] && STASH_SHA="$AFTER"
 fi
