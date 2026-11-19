@@ -21,6 +21,16 @@
 #     UTF-8 바이트 escape로 적는다(macOS 기본 bash 3.2는 $'\u....'를 지원하지 않음).
 
 INPUT=$(cat)
+
+# Herdr 앱 상태줄용: Claude 구독 한도(rate_limits)를 ~/.cache/agent-limits/claude.json 에 남긴다.
+# ~/.local/bin/agent-limits 가 읽는다. 한도 값이 있을 때만 쓰고, 임시 파일 + mv 로 바꿔치기해서
+# 읽는 쪽이 반쪽 파일을 보지 않게 한다. 실패해도 status line 출력에는 영향이 없다.
+if echo "$INPUT" | jq -e '.rate_limits.five_hour or .rate_limits.seven_day' >/dev/null 2>&1; then
+  LIMITS_DIR="$HOME/.cache/agent-limits"
+  mkdir -p "$LIMITS_DIR" 2>/dev/null \
+    && echo "$INPUT" | jq -c '{rate_limits, at: now}' > "$LIMITS_DIR/.claude.$$" 2>/dev/null \
+    && mv -f "$LIMITS_DIR/.claude.$$" "$LIMITS_DIR/claude.json" 2>/dev/null
+fi
 CWD=$(echo "$INPUT" | jq -r '.workspace.current_dir // .cwd // empty' 2>/dev/null)
 [ -z "$CWD" ] && CWD="$PWD"
 

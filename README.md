@@ -239,6 +239,8 @@ Starship 프롬프트 재현 — 터미널 하단에 powerline 세그먼트(user
 model 세그먼트는 현재 세션의 reasoning effort를 함께 표시(`🤖 Opus · high`) — 모델이 effort를 보고하지 않으면 생략.
 `~/.claude/bin/statusline.sh`에 설치. 끝의 model/ctx% 세그먼트는 `/compact` 선제 실행 타이밍 판단용.
 rate limits 세그먼트(`⏳ 5h NN%  7d NN%`)는 Claude.ai 구독 5시간 윈도우/주간 사용률 — 정보 없으면 자동 생략.
+한도 값이 있으면 `~/.cache/agent-limits/claude.json`에도 `{rate_limits, at}`로 남긴다. 다른 도구(예: Herdr 앱 상태줄)가
+Claude 세션 밖에서 한도를 읽을 수 있게 하려는 것이고, 쓰기에 실패해도 status line 출력에는 영향이 없다.
 글리프 표시에는 Nerd Font가 필요하다. 언어 세그먼트는 `Cargo.toml`·`package.json`·`go.mod` 같은 파일 존재만 보고
 `rustc`/`node`/`go`/`python3`를 실행하지 않는다(toolchain 자동 다운로드·작업 폴더가 고른 실행 파일 실행 방지).
 Claude Code는 workspace trust를 수락하기 전에는 statusLine을 실행하지 않는다.
