@@ -6,9 +6,10 @@
 #
 # --commit records and pushes only the listed vault-relative files. Other staged,
 # unstaged, and untracked changes stay local with their staged state intact.
-# The script stops instead of guessing when another sync holds the lock, a merge or
-# rebase is in progress, restoring local changes conflicts, or the push would also
-# publish local commits that this run did not create.
+# The script stops instead of guessing when another sync holds the lock, .git can't be
+# written (e.g. an agent sandbox), a merge or rebase is in progress, restoring local
+# changes conflicts, or the push would also publish local commits that this run did not
+# create.
 
 set -euo pipefail
 
@@ -84,8 +85,14 @@ if [ "$MODE" = "commit" ]; then
 fi
 
 LOCK_DIR="$(git rev-parse --git-path pimp-vault-sync.lock)"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  fail "another vault sync is running. If none is, remove the stale lock: rmdir '$VAULT_DIR/$LOCK_DIR'"
+if ! LOCK_ERR="$(mkdir "$LOCK_DIR" 2>&1)"; then
+  # mkdir also fails when .git can't be written (a read-only mount, or an agent sandbox
+  # such as Codex's workspace-write that allows writes only under its working folder).
+  # Only an existing lock means another sync.
+  if [ -d "$LOCK_DIR" ]; then
+    fail "another vault sync is running. If none is, remove the stale lock: rmdir '$VAULT_DIR/$LOCK_DIR'"
+  fi
+  fail "can't write to the vault's .git (${LOCK_ERR#mkdir: }). In an agent sandbox, allow writes to '$VAULT_DIR' and network access, or run this outside the sandbox."
 fi
 trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
